@@ -138,6 +138,17 @@ try {
   await page.click('#tpl-strip .tpl[data-id="boarding"]');
   check(await app(page, () => window.__app.items.every((i) => i.templateId === 'boarding')), '点选模板应用到全部照片');
 
+  // 点选模板后焦点留在模板栏：左右箭头切换模板而不是照片
+  const before = await app(page, () => ({ tpl: window.__app.current.templateId, id: window.__app.current.id }));
+  const order = await page.$$eval('#tpl-strip .tpl', (l) => l.map((n) => n.dataset.id));
+  await page.keyboard.press('ArrowRight');
+  const afterRight = await app(page, () => ({ tpl: window.__app.current.templateId, id: window.__app.current.id, focus: document.activeElement.dataset.id }));
+  const expected = order[(order.indexOf(before.tpl) + 1) % order.length];
+  check(afterRight.tpl === expected && afterRight.id === before.id && afterRight.focus === expected, `模板栏内 → 切换到下一个模板（${before.tpl} → ${afterRight.tpl}），照片不变`);
+  await page.keyboard.press('ArrowLeft');
+  check((await app(page, () => window.__app.current.templateId)) === before.tpl, '模板栏内 ← 回到上一个模板');
+  await page.click('#tpl-strip .tpl[data-id="boarding"]');
+
   /* ---------------- 全部模板截图 ---------------- */
   const templates = await app(page, async () => (await import('/js/lib/posters.js')).TEMPLATES.map((t) => t.id));
   check(templates.length === 40, `模板数量 ${templates.length}`);

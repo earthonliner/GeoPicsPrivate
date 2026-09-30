@@ -184,13 +184,14 @@ function pickTemplate(id) {
   templatesApplied();
 }
 
-function stepTemplate(delta) {
+function stepTemplate(delta, keepFocus) {
   const list = templatesOf(app.settings.catId);
   if (!list.length) return;
   const idx = list.findIndex((t) => t.id === app.dock.activeId());
   const next = list[(idx + delta + list.length) % list.length];
   pickTemplate(next.id);
   app.dock.revealActive();
+  if (keepFocus) app.dock.focusActive();
 }
 
 function reshuffle(silent) {
@@ -515,6 +516,13 @@ function onKeyDown(e) {
   }
   if (mod || e.altKey) return;
   if ((key === ' ' || key === 'Enter') && t && t.closest('button, a, summary, label')) return;
+
+  // 焦点在模板栏里时，左右箭头切换模板（预览随之更新）；其他位置仍是切换照片
+  if ((key === 'ArrowLeft' || key === 'ArrowRight') && !e.shiftKey && t && t.closest('#tpl-strip')) {
+    e.preventDefault();
+    stepTemplate(key === 'ArrowLeft' ? -1 : 1, true);
+    return;
+  }
 
   const cur = app.current && !app.current.isSample ? app.current : null;
   const handlers = {

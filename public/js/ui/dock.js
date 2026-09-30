@@ -84,6 +84,11 @@ export class TemplateDock {
     if (x) x.b.scrollIntoView({ inline: 'nearest', block: 'nearest', behavior: smooth ? 'smooth' : 'auto' });
   }
 
+  focusActive() {
+    const x = this.buttons.get(this.activeId());
+    if (x) x.b.focus({ preventScroll: true });
+  }
+
   /** 随机模式下显示每个模板被多少张照片使用 */
   updateUses() {
     const random = this.app.settings.batchMode === 'random' && this.app.items.length > 0;
@@ -218,7 +223,10 @@ export class TemplateDock {
     });
     $('tpl-strip').addEventListener('click', (e) => {
       const b = e.target.closest('.tpl');
-      if (b) this.actions.pick(b.dataset.id);
+      if (!b) return;
+      // Safari 点击按钮不会聚焦，显式聚焦才能继续用方向键切换
+      b.focus({ preventScroll: true });
+      this.actions.pick(b.dataset.id);
     });
     $('tpl-strip').addEventListener(
       'wheel',
