@@ -68,7 +68,7 @@ try {
 
   // 遍历全部模板并截图预览
   const templates = await page.evaluate(async () => (await import('/js/lib/posters.js')).TEMPLATES.map((t) => t.id));
-  check(templates.length === 15, `模板数量 ${templates.length}`);
+  check(templates.length === 31, `模板数量 ${templates.length}`);
   for (const id of templates) {
     await page.evaluate((tid) => {
       const a = window.__app;

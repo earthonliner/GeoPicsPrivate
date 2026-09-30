@@ -481,8 +481,14 @@ export function drawPlane(ctx, x, y, size, color) {
 /* 配色                                                                 */
 /* ------------------------------------------------------------------ */
 
-// 主题色是否接近中性灰（饱和度很低）
-export const isNeutral = (hex) => hexToHsv(hex).s < 0.12;
+// 主题色是否接近中性灰（按色度判断，深色的低亮度颜色也不会被误判为有色）
+export function isNeutral(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  const c = [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  return (Math.max(...c) - Math.min(...c)) / 255 < 0.035;
+}
+
+export const hueOf = (hex) => hexToHsv(hex).h;
 
 // 印在浅色纸上的强调色：深色主题直接用主题色，浅色主题取同色相的深色
 export function accentOf(theme) {
@@ -526,7 +532,85 @@ export function dateParts(info) {
   return { y: Number(m[3]), m: MONTH_INDEX[m[1]], d: Number(m[2]) };
 }
 
-const pad2 = (n) => String(n).padStart(2, '0');
+export const pad2 = (n) => String(n).padStart(2, '0');
+
+export const WEEKDAYS_LONG = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
+
+// 月历信息：当月第一天是星期几、天数、当天星期几、一年中的第几天
+export function calendarOf(p) {
+  const day = Date.UTC(p.y, p.m - 1, p.d);
+  const leap = (p.y % 4 === 0 && p.y % 100 !== 0) || p.y % 400 === 0;
+  return {
+    first: new Date(Date.UTC(p.y, p.m - 1, 1)).getUTCDay(),
+    days: new Date(Date.UTC(p.y, p.m, 0)).getUTCDate(),
+    weekday: new Date(day).getUTCDay(),
+    doy: Math.floor((day - Date.UTC(p.y, 0, 1)) / 86400000) + 1,
+    yearDays: leap ? 366 : 365
+  };
+}
+
+// 两位小数的简短经纬度，如 "35.01° N"
+export function shortCoord(info) {
+  if (info && Number.isFinite(info.lat) && Number.isFinite(info.lon)) {
+    return {
+      lat: `${Math.abs(info.lat).toFixed(2)}° ${info.lat >= 0 ? 'N' : 'S'}`,
+      lon: `${Math.abs(info.lon).toFixed(2)}° ${info.lon >= 0 ? 'E' : 'W'}`
+    };
+  }
+  const c = splitCoord(info || {});
+  return { lat: c.lat || '--', lon: c.lon || '--' };
+}
+
+// 拉丁字母单词首字母大写（KYOTO -> Kyoto），汉字保持不变
+export const titleCase = (text) =>
+  String(text || '').toLowerCase().replace(/(^|[\s\-'.(])([a-zà-ÿ])/g, (m, a, b) => a + b.toUpperCase());
+
+/**
+ * 按宽度折行：拉丁文字按空格断词，汉字逐字断开。返回行数组。
+ */
+export function wrapText(ctx, text, maxWidth, spacing) {
+  const tokens = String(text || '').match(/[\u3000-\u9fff\uff00-\uffef]|[^\s\u3000-\u9fff\uff00-\uffef]+|\s+/g) || [];
+  const lines = [];
+  let line = '';
+  tokens.forEach((tok) => {
+    if (/^\s+$/.test(tok)) {
+      if (line) line += ' ';
+      return;
+    }
+    const next = line + tok;
+    if (line && measureSpaced(ctx, next.trimEnd(), spacing) > maxWidth) {
+      lines.push(line.trimEnd());
+      line = tok;
+    } else {
+      line = next;
+    }
+  });
+  if (line.trim()) lines.push(line.trimEnd());
+  return lines;
+}
+
+// 带描边光晕的文字（地图上的标注），先描边再填充
+export function drawHaloText(ctx, text, x, y, spacing, align, halo, width) {
+  ctx.save();
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = halo;
+  ctx.lineWidth = width;
+  drawSpacedText(ctx, text, x, y, spacing, align, 'stroke');
+  ctx.restore();
+  drawSpacedText(ctx, text, x, y, spacing, align);
+}
+
+export function circlePath(ctx, x, y, r) {
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+}
+
+export function strokeLine(ctx, x1, y1, x2, y2) {
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.stroke();
+}
 
 // 相机背刻风格日期： '24 06 16
 export function filmDate(dateText, parts) {
