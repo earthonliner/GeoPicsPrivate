@@ -425,15 +425,15 @@
 
   <!-- 设置 -->
   <dialog id="dlg-settings" class="dialog wide">
-    <div class="dlg-body" tabindex="-1" autofocus>
-      <header class="dlg-head"><h2>设置</h2><button class="icon-btn sm" data-close title="关闭"><svg class="i"><use href="#i-x"/></svg></button></header>
+    <form class="dlg-body" id="cfg-form" tabindex="-1" autofocus>
+      <header class="dlg-head"><h2>设置</h2><button type="button" class="icon-btn sm" data-close title="关闭"><svg class="i"><use href="#i-x"/></svg></button></header>
       <div class="cols">
         <div>
           <h4>外观</h4>
           <div class="seg full" id="cfg-appearance">
-            <button data-value="system"><svg class="i"><use href="#i-monitor"/></svg>跟随系统</button>
-            <button data-value="light"><svg class="i"><use href="#i-sun"/></svg>浅色</button>
-            <button data-value="dark"><svg class="i"><use href="#i-moon"/></svg>深色</button>
+            <button type="button" data-value="system"><svg class="i"><use href="#i-monitor"/></svg>跟随系统</button>
+            <button type="button" data-value="light"><svg class="i"><use href="#i-sun"/></svg>浅色</button>
+            <button type="button" data-value="dark"><svg class="i"><use href="#i-moon"/></svg>深色</button>
           </div>
           <h4>底图</h4>
           <label class="field"><span>地图来源</span>
@@ -460,15 +460,15 @@
             <span>记住每张照片的修改<small>再次导入同一批照片时，自动恢复地名、日期、定位、模板与取景</small></span>
             <input type="checkbox" class="switch" id="cfg-remember">
           </label>
-          <div class="row between"><span class="note" id="cfg-edits-count"></span><button class="btn sm" id="btn-clear-edits">清除已保存的修改</button></div>
+          <div class="row between"><span class="note" id="cfg-edits-count"></span><button type="button" class="btn sm" id="btn-clear-edits">清除已保存的修改</button></div>
         </div>
       </div>
       <p class="note" id="cfg-note"></p>
       <div class="dlg-actions">
         <button type="button" class="btn" id="btn-cfg-cancel">取消</button>
-        <button type="button" class="btn primary" id="btn-cfg-save">保存</button>
+        <button type="submit" class="btn primary" id="btn-cfg-save">保存</button>
       </div>
-    </div>
+    </form>
   </dialog>
 
   <!-- 快捷键 -->

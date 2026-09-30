@@ -354,7 +354,10 @@ export function createSettings(app, actions) {
   $('cfg-map').onchange = syncNotes;
   $('cfg-geocoder').onchange = syncNotes;
   $('btn-cfg-cancel').onclick = () => dlg.close();
-  $('btn-cfg-save').onclick = save;
+  $('cfg-form').onsubmit = (e) => {
+    e.preventDefault();
+    save();
+  };
 
   return { open };
 }
