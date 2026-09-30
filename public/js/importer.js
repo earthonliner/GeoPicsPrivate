@@ -77,6 +77,8 @@ export function applyExif(item, exif) {
   item.dateText = item.autoDate.text;
   item.dateValue = item.autoDate.value;
   item.time = parseExifTime(exif.dateRaw) || item.file.lastModified || 0;
+  item.clock = exif.clock || '';
+  item.camera = exif.camera || '';
   if (exif.hasGps) {
     item.lat = exif.latitude;
     item.lon = exif.longitude;

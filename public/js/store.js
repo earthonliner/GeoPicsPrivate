@@ -28,7 +28,16 @@ export const DEFAULT_SETTINGS = {
   namePattern: '{name}_geo',
   maxSide: 2560,
   workers: 0,
-  scope: 'selected'
+  scope: 'selected',
+  dateFormat: 'en',
+  coordFormat: 'dec',
+  sloganOn: true,
+  slogan: '',
+  thumbSize: 104,
+  sortMode: 'import',
+  inspectorTab: 'photo',
+  appearance: 'system',
+  rememberEdits: true
 };
 
 export function loadSettings() {
@@ -54,7 +63,6 @@ export function createItem(file, templateId) {
   return {
     id: seq,
     file,
-    blob: file,
     name: file.name,
     templateId,
     selected: true,
@@ -71,6 +79,9 @@ export function createItem(file, templateId) {
     dateManual: false,
     autoDate: null,
     time: file.lastModified || 0,
+    clock: '',
+    camera: '',
+    needsConvert: false,
     crops: {},
     thumbUrl: '',
     thumbState: 'idle',

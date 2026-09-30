@@ -549,13 +549,21 @@ export function calendarOf(p) {
   };
 }
 
-// 两位小数的简短经纬度，如 "35.01° N"
+// 简短经纬度：十进制两位小数 "35.01° N"，度分格式 "35°00′ N"
 export function shortCoord(info) {
   if (info && Number.isFinite(info.lat) && Number.isFinite(info.lon)) {
-    return {
-      lat: `${Math.abs(info.lat).toFixed(2)}° ${info.lat >= 0 ? 'N' : 'S'}`,
-      lon: `${Math.abs(info.lon).toFixed(2)}° ${info.lon >= 0 ? 'E' : 'W'}`
+    const fmt = (v, pos, neg) => {
+      const a = Math.abs(v);
+      if (info.coordFormat !== 'dms') return `${a.toFixed(2)}° ${v >= 0 ? pos : neg}`;
+      let d = Math.floor(a);
+      let m = Math.round((a - d) * 60);
+      if (m === 60) {
+        d += 1;
+        m = 0;
+      }
+      return `${d}°${pad2(m)}′ ${v >= 0 ? pos : neg}`;
     };
+    return { lat: fmt(info.lat, 'N', 'S'), lon: fmt(info.lon, 'E', 'W') };
   }
   const c = splitCoord(info || {});
   return { lat: c.lat || '--', lon: c.lon || '--' };

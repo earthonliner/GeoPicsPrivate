@@ -6,6 +6,7 @@
  *
  * 支持：JPEG (APP1 Exif)；HEIC/HEIF 等容器通过扫描 "Exif\0\0" 头做兜底。
  */
+import { clockOf, formatCamera } from './formats.js';
 
 // EXIF 位于文件头部，只读开头一小段，避免把几十 MB 的原图整个读入内存。
 // JPEG 的 APP1 总在文件最前面，256KB 足够；HEIC 等容器的 Exif 可能靠后，失败时再放大到 2MB。
@@ -311,6 +312,8 @@ export async function extractFromBlob(blob) {
     dateText: exif && exif.dateTimeOriginal ? formatDate(exif.dateTimeOriginal) : '',
     dateValue: exif && exif.dateTimeOriginal ? toDateValue(exif.dateTimeOriginal) : '',
     dateRaw: exif && exif.dateTimeOriginal ? exif.dateTimeOriginal : '',
+    clock: exif ? clockOf(exif.dateTimeOriginal) : '',
+    camera: exif ? formatCamera(exif.make, exif.model) : '',
     orientation: exif ? exif.orientation : null,
     raw: exif
   };

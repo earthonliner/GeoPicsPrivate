@@ -12,6 +12,7 @@ import { runExport } from './exporter.js';
 import { loadSettings, saveSettings } from './store.js';
 import { importFiles, collectFromDrop, PlaceResolver, setLocation } from './importer.js';
 import { tileInfo } from './lib/providers.js';
+import { withSource } from './source.js';
 import * as api from './api.js';
 
 const $ = (id) => document.getElementById(id);
@@ -156,14 +157,7 @@ async function requestThumb(item) {
   if (item.thumbState !== 'idle') return;
   item.thumbState = 'loading';
   try {
-    let res;
-    try {
-      res = await app.pool.run('thumb', { blob: item.blob, size: 280 }, { priority: 2 });
-    } catch (err) {
-      if (err.code !== 'DECODE') throw err;
-      item.blob = await api.convertToJpeg(item.file, 1200);
-      res = await app.pool.run('thumb', { blob: item.blob, size: 280 }, { priority: 2 });
-    }
+    const res = await withSource(item, 1200, (blob) => app.pool.run('thumb', { blob, size: 280 }, { priority: 2 }));
     item.thumbUrl = URL.createObjectURL(res.blob);
     item.aspect = res.width / res.height;
     item.thumbState = 'ready';

@@ -9,6 +9,7 @@
 import { renderNamePattern, baseName, createNamer, formatDateForFile } from './lib/filename.js';
 import { ZipWriter } from './lib/zip.js';
 import { buildStyle, buildInfo, buildMapSpec } from './params.js';
+import { withSource } from './source.js';
 import * as api from './api.js';
 
 const ZIP_PART_BYTES = 400 * 1024 * 1024;
@@ -76,6 +77,35 @@ async function createSink(opts, folderName) {
   };
 }
 
+const logoBlob = async (settings) => (settings.logoDataUrl ? (await fetch(settings.logoDataUrl)).blob() : null);
+
+function renderPayload(app, item, blob, opts, logo) {
+  const settings = app.settings;
+  const style = buildStyle(settings, item);
+  return {
+    blob,
+    tplId: item.templateId,
+    info: buildInfo(item, settings),
+    style,
+    map: buildMapSpec(settings, item, style, app.tileInfo()),
+    base: location.origin,
+    scale: opts.scale,
+    format: opts.format,
+    quality: opts.quality,
+    maxSide: opts.maxSide,
+    logo
+  };
+}
+
+/**
+ * 按导出参数渲染单张海报（大图预览 / 复制到剪贴板），与批量导出走同一条 Worker 流水线。
+ * @returns {Promise<{blob: Blob, width: number, height: number, mapOk: boolean}>}
+ */
+export async function renderOne(app, item, opts) {
+  const logo = await logoBlob(app.settings);
+  return withSource(item, opts.maxSide, (blob) => app.pool.run('render', renderPayload(app, item, blob, opts, logo), { priority: 0 }));
+}
+
 /**
  * @param app
  * @param {object} opts { items, mode, dirHandle, scale, format, quality, pattern, maxSide, onProgress, isCancelled }
@@ -83,12 +113,11 @@ async function createSink(opts, folderName) {
  */
 export async function runExport(app, opts) {
   const { items } = opts;
-  const settings = app.settings;
   const folderName = `GeoPhotoGraph-${stamp()}`;
   const sink = await createSink(opts, folderName);
   const namer = createNamer();
   const ext = opts.format === 'png' ? 'png' : 'jpg';
-  const logo = settings.logoDataUrl ? await (await fetch(settings.logoDataUrl)).blob() : null;
+  const logo = await logoBlob(app.settings);
 
   const total = items.length;
   const failed = [];
@@ -104,35 +133,10 @@ export async function runExport(app, opts) {
       elapsed: (performance.now() - startedAt) / 1000
     });
 
-  const payloadFor = (item, index) => {
-    const style = buildStyle(settings, item);
-    return {
-      blob: item.blob,
-      tplId: item.templateId,
-      info: buildInfo(item),
-      style,
-      map: buildMapSpec(settings, item, style, app.tileInfo()),
-      base: location.origin,
-      scale: opts.scale,
-      format: opts.format,
-      quality: opts.quality,
-      maxSide: opts.maxSide,
-      logo,
-      index
-    };
-  };
-
   const processOne = async (item, index) => {
     let result;
     try {
-      try {
-        result = await app.pool.run('render', payloadFor(item, index), { priority: 1 });
-      } catch (err) {
-        if (err.code !== 'DECODE') throw err;
-        // 浏览器解不了（如 HEIC）：用 macOS sips 转成 JPEG 再试一次
-        item.blob = await api.convertToJpeg(item.file, opts.maxSide);
-        result = await app.pool.run('render', payloadFor(item, index), { priority: 1 });
-      }
+      result = await withSource(item, opts.maxSide, (blob) => app.pool.run('render', renderPayload(app, item, blob, opts, logo), { priority: 1 }));
       if (!result.mapOk) fallbackMaps += 1;
       const name = namer(
         renderNamePattern(opts.pattern, {

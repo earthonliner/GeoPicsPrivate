@@ -83,7 +83,7 @@ try {
     const el = await page.$('#preview');
     await el.screenshot({ path: path.join(outDir, `tpl-${id}.png`) });
   }
-  check(fs.readdirSync(outDir).length >= 15, '全部模板预览已截图');
+  check(fs.readdirSync(outDir).length >= templates.length, '全部模板预览已截图');
 
   await page.evaluate(() => { window.__app.current = window.__app.items[0]; window.__app.preview.schedule(0); });
   await new Promise((r) => setTimeout(r, 1500));
