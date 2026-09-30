@@ -1,0 +1,4 @@
+node_modules/
+sample-photos/
+.DS_Store
+tests/e2e/out/

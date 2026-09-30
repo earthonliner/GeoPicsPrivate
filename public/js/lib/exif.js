@@ -1,0 +1,317 @@
+/**
+ * exif-parser.js
+ *
+ * 纯 JS、基于 ArrayBuffer/DataView 的 EXIF 解析器（不依赖 DOM / Image，主线程、Worker、Node 均可运行）。
+ * 最小子集：GPSLatitude / GPSLongitude / DateTimeOriginal / Orientation / Make / Model。
+ *
+ * 支持：JPEG (APP1 Exif)；HEIC/HEIF 等容器通过扫描 "Exif\0\0" 头做兜底。
+ */
+
+// EXIF 位于文件头部，只读开头一小段，避免把几十 MB 的原图整个读入内存。
+// JPEG 的 APP1 总在文件最前面，256KB 足够；HEIC 等容器的 Exif 可能靠后，失败时再放大到 2MB。
+export const HEAD_BYTES = 256 * 1024;
+export const HEAD_BYTES_LARGE = 2 * 1024 * 1024;
+const SCAN_BYTES = 1024 * 1024;
+
+const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+
+// TIFF 数据类型 -> 单元素字节数
+const TYPE_SIZE = { 1: 1, 2: 1, 3: 2, 4: 4, 5: 8, 6: 1, 7: 1, 8: 2, 9: 4, 10: 8 };
+
+const TAG = {
+  MAKE: 0x010f,
+  MODEL: 0x0110,
+  ORIENTATION: 0x0112,
+  DATETIME: 0x0132,
+  EXIF_IFD: 0x8769,
+  GPS_IFD: 0x8825,
+  DATETIME_ORIGINAL: 0x9003,
+  DATETIME_DIGITIZED: 0x9004,
+  GPS_LAT_REF: 0x0001,
+  GPS_LAT: 0x0002,
+  GPS_LON_REF: 0x0003,
+  GPS_LON: 0x0004
+};
+
+/* ------------------------------------------------------------------ */
+/* TIFF / IFD 解析                                                      */
+/* ------------------------------------------------------------------ */
+
+function findExifStart(view) {
+  const len = view.byteLength;
+  if (len < 4) return -1;
+
+  // JPEG: FFD8 后依次遍历 marker，找到 APP1 "Exif\0\0"
+  if (view.getUint16(0) === 0xffd8) {
+    let offset = 2;
+    while (offset + 4 <= len) {
+      if (view.getUint8(offset) !== 0xff) {
+        offset += 1;
+        continue;
+      }
+      const marker = view.getUint8(offset + 1);
+      if (marker === 0xff) {
+        offset += 1;
+        continue;
+      }
+      if (marker === 0xd8 || marker === 0x01 || (marker >= 0xd0 && marker <= 0xd7)) {
+        offset += 2;
+        continue;
+      }
+      if (marker === 0xda || marker === 0xd9) break;
+      const size = view.getUint16(offset + 2);
+      if (marker === 0xe1 && offset + 10 <= len && isExifHeader(view, offset + 4)) {
+        return offset + 10;
+      }
+      offset += 2 + size;
+    }
+    return -1;
+  }
+
+  // 其他容器（如 HEIC）：扫描 "Exif\0\0" 后紧跟 TIFF 头
+  const scanEnd = Math.min(len - 10, SCAN_BYTES);
+  for (let i = 0; i < scanEnd; i++) {
+    if (view.getUint8(i) === 0x45 && isExifHeader(view, i)) {
+      const bom = view.getUint16(i + 6);
+      if (bom === 0x4949 || bom === 0x4d4d) return i + 6;
+    }
+  }
+  // 没有 "Exif\0\0" 前缀的裸 TIFF 头（部分 HEIC / TIFF 容器）
+  for (let i = 0; i < scanEnd; i++) {
+    const a = view.getUint8(i);
+    const b = view.getUint8(i + 1);
+    if ((a === 0x4d && b === 0x4d && view.getUint16(i + 2) === 42 && view.getUint32(i + 4) === 8) ||
+        (a === 0x49 && b === 0x49 && view.getUint16(i + 2, true) === 42 && view.getUint32(i + 4, true) === 8)) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+function isExifHeader(view, offset) {
+  return (
+    view.getUint8(offset) === 0x45 && // E
+    view.getUint8(offset + 1) === 0x78 && // x
+    view.getUint8(offset + 2) === 0x69 && // i
+    view.getUint8(offset + 3) === 0x66 && // f
+    view.getUint8(offset + 4) === 0 &&
+    view.getUint8(offset + 5) === 0
+  );
+}
+
+function readIfdTags(view, tiffStart, dirOffset, le) {
+  const tags = {};
+  const len = view.byteLength;
+  const dirStart = tiffStart + dirOffset;
+  if (dirStart + 2 > len) return tags;
+
+  const count = view.getUint16(dirStart, le);
+  for (let i = 0; i < count; i++) {
+    const entry = dirStart + 2 + i * 12;
+    if (entry + 12 > len) break;
+
+    const tag = view.getUint16(entry, le);
+    const type = view.getUint16(entry + 2, le);
+    const n = view.getUint32(entry + 4, le);
+    const unit = TYPE_SIZE[type];
+    if (!unit || n > 4096) continue;
+
+    const total = unit * n;
+    const valueOffset = total <= 4 ? entry + 8 : tiffStart + view.getUint32(entry + 8, le);
+    if (valueOffset + total > len) continue;
+
+    tags[tag] = readValue(view, type, n, valueOffset, le);
+  }
+  return tags;
+}
+
+function readValue(view, type, n, offset, le) {
+  if (type === 2) {
+    let s = '';
+    for (let i = 0; i < n; i++) {
+      const c = view.getUint8(offset + i);
+      if (c === 0) break;
+      s += String.fromCharCode(c);
+    }
+    return s;
+  }
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    switch (type) {
+      case 1:
+      case 7:
+        out.push(view.getUint8(offset + i));
+        break;
+      case 3:
+        out.push(view.getUint16(offset + i * 2, le));
+        break;
+      case 4:
+        out.push(view.getUint32(offset + i * 4, le));
+        break;
+      case 9:
+        out.push(view.getInt32(offset + i * 4, le));
+        break;
+      case 5: {
+        const num = view.getUint32(offset + i * 8, le);
+        const den = view.getUint32(offset + i * 8 + 4, le);
+        out.push(den ? num / den : 0);
+        break;
+      }
+      case 10: {
+        const num = view.getInt32(offset + i * 8, le);
+        const den = view.getInt32(offset + i * 8 + 4, le);
+        out.push(den ? num / den : 0);
+        break;
+      }
+      default:
+        break;
+    }
+  }
+  return n === 1 ? out[0] : out;
+}
+
+/* ------------------------------------------------------------------ */
+/* 坐标 / 日期转换与格式化                                              */
+/* ------------------------------------------------------------------ */
+
+/**
+ * 度分秒 (DMS) -> 十进制度 (DD)
+ * @param {number[]} dms [度, 分, 秒]
+ * @param {string} ref 'N' | 'S' | 'E' | 'W'
+ */
+export function dmsToDecimal(dms, ref) {
+  if (!Array.isArray(dms) || dms.length < 3) return NaN;
+  const value = dms[0] + dms[1] / 60 + dms[2] / 3600;
+  return ref === 'S' || ref === 'W' ? -value : value;
+}
+
+/**
+ * 十进制经纬度 -> 展示文案，如 "46.0192° N  7.7459° E"
+ */
+export function formatCoordinates(lat, lon, digits) {
+  const d = digits === undefined ? 4 : digits;
+  const latText = `${Math.abs(lat).toFixed(d)}° ${lat >= 0 ? 'N' : 'S'}`;
+  const lonText = `${Math.abs(lon).toFixed(d)}° ${lon >= 0 ? 'E' : 'W'}`;
+  return { lat: latText, lon: lonText, text: `${latText}  ${lonText}` };
+}
+
+/**
+ * "2024:06:16 10:22:33" | Date -> "JUN 16, 2024"
+ */
+export function formatDate(input) {
+  let year;
+  let month;
+  let day;
+  if (input instanceof Date) {
+    year = input.getFullYear();
+    month = input.getMonth() + 1;
+    day = input.getDate();
+  } else {
+    const m = /(\d{4})[:\-/](\d{1,2})[:\-/](\d{1,2})/.exec(String(input || ''));
+    if (!m) return '';
+    year = Number(m[1]);
+    month = Number(m[2]);
+    day = Number(m[3]);
+  }
+  if (!(month >= 1 && month <= 12) || !(day >= 1 && day <= 31)) return '';
+  return `${MONTHS[month - 1]} ${String(day).padStart(2, '0')}, ${year}`;
+}
+
+/**
+ * "2024:06:16 10:22:33" | Date -> "2024-06-16"（供 <picker mode="date"> 使用），无法解析返回 ''
+ */
+export function toDateValue(input) {
+  const pad = (n) => String(n).padStart(2, '0');
+  if (input instanceof Date) return `${input.getFullYear()}-${pad(input.getMonth() + 1)}-${pad(input.getDate())}`;
+  const m = /(\d{4})[:\-/](\d{1,2})[:\-/](\d{1,2})/.exec(String(input || ''));
+  if (!m || !formatDate(input)) return '';
+  return `${m[1]}-${pad(Number(m[2]))}-${pad(Number(m[3]))}`;
+}
+
+/* ------------------------------------------------------------------ */
+/* 对外接口                                                             */
+/* ------------------------------------------------------------------ */
+
+/**
+ * 解析 ArrayBuffer 中的 EXIF。
+ * @returns {{latitude:number|null, longitude:number|null, dateTimeOriginal:string|null,
+ *            orientation:number|null, make:string|null, model:string|null}|null}
+ */
+export function parseExif(buffer) {
+  if (!buffer || !buffer.byteLength) return null;
+  const view = new DataView(buffer);
+
+  let tiffStart;
+  try {
+    tiffStart = findExifStart(view);
+  } catch (e) {
+    return null;
+  }
+  if (tiffStart < 0 || tiffStart + 8 > view.byteLength) return null;
+
+  try {
+    const bom = view.getUint16(tiffStart);
+    const le = bom === 0x4949;
+    if (!le && bom !== 0x4d4d) return null;
+    if (view.getUint16(tiffStart + 2, le) !== 42) return null;
+
+    const ifd0 = readIfdTags(view, tiffStart, view.getUint32(tiffStart + 4, le), le);
+    const exif = typeof ifd0[TAG.EXIF_IFD] === 'number' ? readIfdTags(view, tiffStart, ifd0[TAG.EXIF_IFD], le) : {};
+    const gps = typeof ifd0[TAG.GPS_IFD] === 'number' ? readIfdTags(view, tiffStart, ifd0[TAG.GPS_IFD], le) : {};
+
+    let latitude = dmsToDecimal(gps[TAG.GPS_LAT], gps[TAG.GPS_LAT_REF]);
+    let longitude = dmsToDecimal(gps[TAG.GPS_LON], gps[TAG.GPS_LON_REF]);
+    const validGps =
+      Number.isFinite(latitude) &&
+      Number.isFinite(longitude) &&
+      Math.abs(latitude) <= 90 &&
+      Math.abs(longitude) <= 180 &&
+      // 部分相机在无定位时写入 0,0
+      !(latitude === 0 && longitude === 0);
+    if (!validGps) {
+      latitude = null;
+      longitude = null;
+    }
+
+    return {
+      latitude,
+      longitude,
+      dateTimeOriginal: exif[TAG.DATETIME_ORIGINAL] || exif[TAG.DATETIME_DIGITIZED] || ifd0[TAG.DATETIME] || null,
+      orientation: typeof ifd0[TAG.ORIENTATION] === 'number' ? ifd0[TAG.ORIENTATION] : null,
+      make: ifd0[TAG.MAKE] || null,
+      model: ifd0[TAG.MODEL] || null
+    };
+  } catch (e) {
+    return null;
+  }
+}
+
+/**
+ * 从 File / Blob 提取 EXIF 并格式化。永不 reject：解析失败时 hasGps=false。
+ */
+export async function extractFromBlob(blob) {
+  let exif = null;
+  try {
+    const buffer = await blob.slice(0, HEAD_BYTES).arrayBuffer();
+    exif = parseExif(buffer);
+    const isJpeg = buffer.byteLength > 2 && new DataView(buffer).getUint16(0) === 0xffd8;
+    if (!exif && !isJpeg && blob.size > HEAD_BYTES) exif = parseExif(await blob.slice(0, HEAD_BYTES_LARGE).arrayBuffer());
+  } catch (e) {
+    exif = null;
+  }
+
+  const hasGps = !!(exif && exif.latitude !== null && exif.longitude !== null);
+  const coords = hasGps ? formatCoordinates(exif.latitude, exif.longitude) : null;
+
+  return {
+    hasGps,
+    latitude: hasGps ? exif.latitude : null,
+    longitude: hasGps ? exif.longitude : null,
+    coordText: coords ? coords.text : '',
+    dateText: exif && exif.dateTimeOriginal ? formatDate(exif.dateTimeOriginal) : '',
+    dateValue: exif && exif.dateTimeOriginal ? toDateValue(exif.dateTimeOriginal) : '',
+    dateRaw: exif && exif.dateTimeOriginal ? exif.dateTimeOriginal : '',
+    orientation: exif ? exif.orientation : null,
+    raw: exif
+  };
+}
