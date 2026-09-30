@@ -53,6 +53,11 @@ try {
   await page.waitForFunction((n) => window.__app.items.length === n, { timeout: 30000 }, COUNT);
   check(true, `导入 ${COUNT} 张`);
 
+  // 带 EXIF 方向 6 的横幅照片在缩略图里应当是竖幅（方向已自动应用）
+  await page.waitForFunction(() => { const it = window.__app.items.find((i) => /-013\./.test(i.name)); return it && (it.thumbState === 'ready' || it.thumbState === 'error'); }, { timeout: 30000 });
+  const rotated = await page.evaluate(() => window.__app.items.filter((i) => /-013\./.test(i.name)).map((i) => i.aspect));
+  check(rotated.length === 1 && rotated[0] < 1, `EXIF 方向已应用（缩略图宽高比 ${rotated[0] && rotated[0].toFixed(2)}）`);
+
   const noLoc = await page.evaluate(() => window.__app.items.filter((i) => i.lat === null).length);
   check(noLoc > 0 && noLoc < COUNT, `无位置照片 ${noLoc} 张被识别`);
 
@@ -95,7 +100,7 @@ try {
   await page.click('#btn-export-go');
   await page.waitForFunction(() => !document.querySelector('#btn-pg-close').hidden, { timeout: 180000 });
   const summary = await page.$eval('#pg-line', (e) => e.textContent);
-  console.log('export:', summary);
+  console.log('export:', summary, '|', await page.$eval('#pg-sub', (e) => e.textContent));
   const exported = path.join(home, 'out');
   const dirs = fs.readdirSync(exported);
   const jpgs = dirs.length ? fs.readdirSync(path.join(exported, dirs[0])).filter((f) => f.endsWith('.jpg')) : [];

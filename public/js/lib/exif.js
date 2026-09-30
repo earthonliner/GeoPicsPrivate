@@ -7,8 +7,10 @@
  * 支持：JPEG (APP1 Exif)；HEIC/HEIF 等容器通过扫描 "Exif\0\0" 头做兜底。
  */
 
-// EXIF 位于文件头部，只读前 HEAD_BYTES，避免把几十 MB 的原图整个读入内存
-export const HEAD_BYTES = 2 * 1024 * 1024;
+// EXIF 位于文件头部，只读开头一小段，避免把几十 MB 的原图整个读入内存。
+// JPEG 的 APP1 总在文件最前面，256KB 足够；HEIC 等容器的 Exif 可能靠后，失败时再放大到 2MB。
+export const HEAD_BYTES = 256 * 1024;
+export const HEAD_BYTES_LARGE = 2 * 1024 * 1024;
 const SCAN_BYTES = 1024 * 1024;
 
 const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
@@ -292,6 +294,8 @@ export async function extractFromBlob(blob) {
   try {
     const buffer = await blob.slice(0, HEAD_BYTES).arrayBuffer();
     exif = parseExif(buffer);
+    const isJpeg = buffer.byteLength > 2 && new DataView(buffer).getUint16(0) === 0xffd8;
+    if (!exif && !isJpeg && blob.size > HEAD_BYTES) exif = parseExif(await blob.slice(0, HEAD_BYTES_LARGE).arrayBuffer());
   } catch (e) {
     exif = null;
   }

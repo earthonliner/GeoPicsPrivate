@@ -70,6 +70,8 @@ def main():
         day = 1 + (i * 7) % 28
         exif[0x010F] = "GeoPhotoGraph"
         exif[0x0110] = "Sample"
+        if i % 13 == 12:  # 带 EXIF 方向（竖拍）的照片，用于验证自动旋转
+            exif[0x0112] = 6
         ifd = exif.get_ifd(0x8769)
         ifd[0x9003] = f"2024:{month:02d}:{day:02d} {8 + i % 10:02d}:{(i * 7) % 60:02d}:00"
         if i % 11 != 10:  # 每 11 张中有 1 张没有 GPS

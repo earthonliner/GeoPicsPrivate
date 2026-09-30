@@ -627,6 +627,7 @@ function syncSettingsDialog() {
   const notes = [];
   if ($('cfg-geocoder').value !== 'mapbox' && !(app.config && app.config.hasMapboxToken && $('cfg-geocoder').value === 'auto')) {
     notes.push('Nominatim 限速 1 次/秒：按 ~1 km 网格合并请求并缓存，上千张同城照片只需极少请求。');
+    notes.push('注意：OpenStreetMap 在中国大陆 / 日本常只给出区县（如 Xihu District），要城市级名称请配置 Mapbox token，或手动改地名后“应用到已勾选”。');
   }
   notes.push('底图瓦片与地名缓存在 ~/.geophotograph/cache，离线可复用。');
   $('cfg-note').textContent = notes.join(' ');
