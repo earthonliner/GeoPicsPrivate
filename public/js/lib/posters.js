@@ -1,31 +1,31 @@
 /**
  * posters.js
  *
- * 15 种海报模板的 Canvas 2D 绘制代码，移植自 GeoPhotoGraph 小程序（earthonliner/GeoPhotoGraph）。
+ * 模板注册表与原版 15 种海报模板的 Canvas 2D 绘制代码，移植自 GeoPhotoGraph 小程序（earthonliner/GeoPhotoGraph）；
+ * 新增模板见 posters-more.js / posters-extra.js，公共绘制部件见 poster-kit.js。
  * 只依赖标准 Canvas 2D API，因此可同时运行在主线程（HTMLCanvasElement）与
  * Web Worker（OffscreenCanvas）中：预览与批量导出共用同一份绘制逻辑。
  *
  * 所有绘制坐标基于 400 x 533.33 的逻辑单位，预览 / 导出时按 canvas.width / POSTER_W 缩放。
  */
 
-import { hexToRgba } from './themes.js';
+import {
+  POSTER_W, POSTER_H, FOOTER_H, FULL_PHOTO, SANS, SERIF, TAGLINE, CENTER_PIN, tplMap, brandOf, sloganOf,
+  setFont, measureSpaced, drawSpacedText, fitFontSize, setTextAlpha, drawImageCover, fitInside, withAlpha,
+  drawMapRegion, drawMapWindow, roundedRectPath, photoText, drawFullBleedPhoto, splitCoord, filmDate, dateParts, hexToRgba,
+  drawLogoMark
+} from './poster-kit.js';
+import { MORE_TEMPLATES, MORE_CATEGORIES } from './posters-more.js';
+import { EXTRA_TEMPLATES, EXTRA_CATEGORIES } from './posters-extra.js';
 
-// 海报逻辑尺寸 400 x 533.33（3:4）。所有绘制坐标基于逻辑单位，
-// 预览按屏幕 dpr 缩放，导出按 3 倍缩放 => 1200 x 1600 px。
-export const POSTER_W = 400;
-export const POSTER_H = (POSTER_W * 4) / 3;
-export const EXPORT_SCALE = 3;
-// 底端品牌栏（可选）拼接在海报下方，整张图高度 = POSTER_H + FOOTER_H
-export const FOOTER_H = 64;
-export const MAX_CROP_ZOOM = 4;
-
-export const posterHeight = (footer) => POSTER_H + (footer ? FOOTER_H : 0);
-export const exportSizeText = (footer) => `${POSTER_W * EXPORT_SCALE} × ${Math.round(posterHeight(footer) * EXPORT_SCALE)}`;
+export {
+  POSTER_W, POSTER_H, EXPORT_SCALE, FOOTER_H, MAX_CROP_ZOOM, posterHeight, exportSizeText, TAGLINE, DEFAULT_BRAND,
+  MAP_SIZE, clamp, coverRect, filmDate
+} from './poster-kit.js';
 
 // 各模板中照片的取景区域（逻辑单位）；胶片 / 明信片的照片框固定，其余为整版或下半版
 const FILM_PHOTO = { left: 68, top: 50, w: 264, h: 368 };
 const POSTCARD_PHOTO = { left: 40, top: 46, w: 320, h: 236 };
-const FULL_PHOTO = { left: 0, top: 0, w: POSTER_W, h: POSTER_H };
 const MAT_PHOTO = { left: 28, top: 28, w: 344, h: 404 };
 const BAR_H = 100;
 const BAR_PHOTO = { left: 0, top: 0, w: POSTER_W, h: POSTER_H - BAR_H };
@@ -51,27 +51,8 @@ export const CROP_REGIONS = {
 };
 export const DEFAULT_CROP = { zoom: 1, x: 0, y: 0 };
 
-const SANS = '"Helvetica Neue", Helvetica, Arial, "PingFang SC", "Microsoft YaHei", sans-serif';
-const SERIF = 'Georgia, "Times New Roman", "Songti SC", serif';
-export const TAGLINE = 'CAPTURED MOMENT · LASTING PLACE';
-
-export const DEFAULT_BRAND = { name: 'GEOPICS', tagline: 'MAP YOUR MOMENT' };
-const brandOf = (style) => ({
-  name: (style.brand && style.brand.name && style.brand.name.trim()) || DEFAULT_BRAND.name,
-  tagline: style.brand && style.brand.tagline !== undefined ? style.brand.tagline : DEFAULT_BRAND.tagline
-});
-
-/**
- * 所有模板都请求整张海报比例（3:4）的地图，作为最底层背景，
- * 这样照片降低不透明度时可以与地图自然融合。
- * pin: 定位针在海报中的比例位置，用于避开被照片遮挡的区域（徽章模板中即圆心）
- */
-export const MAP_SIZE = { width: 600, height: 800 };
-const CENTER_PIN = { x: 0.5, y: 0.5 };
-const tplMap = (pin) => Object.assign({ pin }, MAP_SIZE);
-
-// category：模板所属分类；hot：同时出现在“热门”分类里
-export const TEMPLATES = [
+// category：模板所属分类；also：同时出现的其他分类；hot：同时出现在“热门”分类里
+const BASE_TEMPLATES = [
   { id: 'polaroid', name: '拍立得', category: 'classic', hot: true, map: tplMap({ x: 0.88, y: 0.5 }) },
   { id: 'split', name: '上下分割', category: 'classic', map: tplMap({ x: 0.5, y: 0.19 }) },
   { id: 'medallion', name: '地图徽章', category: 'classic', map: tplMap({ x: 0.18, y: 0.846 }) },
@@ -85,222 +66,35 @@ export const TEMPLATES = [
   { id: 'glass', name: '玻璃卡片', category: 'editorial', hot: true, map: tplMap(CENTER_PIN) },
   { id: 'typo', name: '巨字', category: 'editorial', map: tplMap(CENTER_PIN) },
   { id: 'film', name: '胶片', category: 'retro', map: tplMap(CENTER_PIN) },
-  { id: 'postcard', name: '明信片', category: 'retro', map: tplMap(CENTER_PIN) },
+  { id: 'postcard', name: '明信片', category: 'retro', also: ['travel'], map: tplMap(CENTER_PIN) },
   { id: 'gallery', name: '画廊展签', category: 'retro', map: tplMap({ x: 0.9, y: 0.28 }) }
 ];
 
+const ADDED_TEMPLATES = MORE_TEMPLATES.concat(EXTRA_TEMPLATES);
+ADDED_TEMPLATES.forEach((t) => {
+  if (t.crop) CROP_REGIONS[t.id] = t.crop;
+});
+
+export const TEMPLATES = BASE_TEMPLATES.concat(
+  ADDED_TEMPLATES.map(({ paint, crop, ...meta }) => meta)
+);
+
 export const HOT_CATEGORY = 'hot';
+export const ALL_CATEGORY = 'all';
 export const CATEGORIES = [
+  { id: ALL_CATEGORY, name: '全部' },
   { id: HOT_CATEGORY, name: '热门' },
   { id: 'minimal', name: '简约' },
   { id: 'classic', name: '经典' },
   { id: 'editorial', name: '杂志' },
   { id: 'retro', name: '复古' }
-];
+].concat(MORE_CATEGORIES, EXTRA_CATEGORIES);
 
 export function templatesOf(categoryId) {
-  return TEMPLATES.filter((t) => (categoryId === HOT_CATEGORY ? t.hot : t.category === categoryId));
-}
-
-
-/* ------------------------------------------------------------------ */
-/* 通用工具                                                             */
-/* ------------------------------------------------------------------ */
-
-function mulberry32(seed) {
-  let a = seed >>> 0;
-  return function rand() {
-    a += 0x6d2b79f5;
-    let t = a;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-/* ------------------------------------------------------------------ */
-/* Canvas 绘图基础函数（坐标均为逻辑单位）                                 */
-/* ------------------------------------------------------------------ */
-
-function setFont(ctx, size, weight, family, style) {
-  ctx.font = `${style || 'normal'} ${weight || 400} ${size}px ${family || SANS}`;
-}
-
-function measureSpaced(ctx, text, spacing) {
-  let w = 0;
-  for (const ch of text) w += ctx.measureText(ch).width + spacing;
-  return Math.max(0, w - spacing);
-}
-
-// 当前海报的文字不透明度（paintPoster 内同步设置）
-let textAlpha = 1;
-
-// 小程序 Canvas 2D 不保证支持 letterSpacing，这里逐字绘制实现字距
-function drawSpacedText(ctx, text, x, y, spacing, align, mode) {
-  const prevAlpha = ctx.globalAlpha;
-  ctx.globalAlpha = prevAlpha * textAlpha;
-  ctx.textAlign = 'left';
-  const total = measureSpaced(ctx, text, spacing);
-  let cursor = x;
-  if (align === 'center') cursor = x - total / 2;
-  else if (align === 'right') cursor = x - total;
-  for (const ch of text) {
-    if (mode !== 'stroke') ctx.fillText(ch, cursor, y);
-    if (mode === 'stroke' || mode === 'both') ctx.strokeText(ch, cursor, y);
-    cursor += ctx.measureText(ch).width + spacing;
-  }
-  ctx.globalAlpha = prevAlpha;
-}
-
-// 让大字地名自适应宽度：从 maxSize 开始逐步缩小
-function fitFontSize(ctx, text, maxWidth, maxSize, minSize, weight, family, spacing, style) {
-  let size = maxSize;
-  // 名称特别长时允许比 minSize 再缩小一些，宁可小一点也不要超出边界
-  const floor = Math.max(6, Math.floor(minSize * 0.6));
-  while (size > floor) {
-    setFont(ctx, size, weight, family, style);
-    if (measureSpaced(ctx, text, spacing) <= maxWidth) break;
-    size -= 1;
-  }
-  setFont(ctx, size, weight, family, style);
-  return size;
-}
-
-export const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
-
-/**
- * 计算 cover 裁切区域。crop = { zoom: 1~4, x: -1~1, y: -1~1 }：
- * zoom 在“刚好铺满”的基础上放大；x / y 为取景窗口在可移动范围内的归一化位置
- * （-1 = 最左 / 最上，0 = 居中，1 = 最右 / 最下），保证窗口永远不会越出图片。
- */
-export function coverRect(iw, ih, w, h, crop) {
-  const zoom = clamp((crop && crop.zoom) || 1, 1, MAX_CROP_ZOOM);
-  const r = Math.max(w / iw, h / ih) * zoom;
-  const sw = w / r;
-  const sh = h / r;
-  const cx = iw / 2 + clamp((crop && crop.x) || 0, -1, 1) * ((iw - sw) / 2);
-  const cy = ih / 2 + clamp((crop && crop.y) || 0, -1, 1) * ((ih - sh) / 2);
-  return { sx: cx - sw / 2, sy: cy - sh / 2, sw, sh };
-}
-
-function drawImageCover(ctx, img, x, y, w, h, crop) {
-  const c = coverRect(img.width, img.height, w, h, crop);
-  ctx.drawImage(img, c.sx, c.sy, c.sw, c.sh, x, y, w, h);
-}
-
-function fitInside(img, maxW, maxH) {
-  const r = Math.min(maxW / img.width, maxH / img.height);
-  return { w: img.width * r, h: img.height * r };
-}
-
-// 无 token / 下载失败时的本地极简底图（按坐标做伪随机，同一位置结果稳定）
-function drawFallbackMap(ctx, x, y, w, h, seed, pin, dark) {
-  const rand = mulberry32(seed);
-  ctx.fillStyle = dark ? '#1c1d1f' : '#ecebe7';
-  ctx.fillRect(x, y, w, h);
-
-  ctx.strokeStyle = dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)';
-  ctx.lineWidth = 0.6;
-  const step = 24;
-  ctx.beginPath();
-  for (let gx = x; gx <= x + w; gx += step) {
-    ctx.moveTo(gx, y);
-    ctx.lineTo(gx, y + h);
-  }
-  for (let gy = y; gy <= y + h; gy += step) {
-    ctx.moveTo(x, gy);
-    ctx.lineTo(x + w, gy);
-  }
-  ctx.stroke();
-
-  ctx.fillStyle = dark ? '#2a2c31' : '#dedde9';
-  ctx.globalAlpha = 0.45;
-  ctx.beginPath();
-  ctx.ellipse(x + w * (0.15 + rand() * 0.3), y + h * (0.6 + rand() * 0.3), w * 0.28, h * 0.12, rand(), 0, Math.PI * 2);
-  ctx.fill();
-  ctx.globalAlpha = 1;
-
-  ctx.lineCap = 'round';
-  for (let i = 0; i < 16; i++) {
-    const major = i % 4 === 0;
-    ctx.strokeStyle = dark
-      ? major ? 'rgba(255,255,255,0.32)' : 'rgba(255,255,255,0.14)'
-      : major ? '#ffffff' : 'rgba(255,255,255,0.75)';
-    ctx.lineWidth = major ? 3.2 : 1.4;
-    ctx.beginPath();
-    const sx = x + rand() * w;
-    const sy = y + rand() * h;
-    ctx.moveTo(sx, sy);
-    ctx.bezierCurveTo(
-      x + rand() * w,
-      y + rand() * h,
-      x + rand() * w,
-      y + rand() * h,
-      x + rand() * w,
-      y + rand() * h
-    );
-    ctx.stroke();
-  }
-
-  if (pin) {
-    const px = x + w * pin.x;
-    const py = y + h * pin.y;
-    ctx.fillStyle = dark ? '#111111' : '#ffffff';
-    ctx.beginPath();
-    ctx.arc(px, py, 6, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = dark ? '#ffffff' : '#111111';
-    ctx.beginPath();
-    ctx.arc(px, py, 3.6, 0, Math.PI * 2);
-    ctx.fill();
-  }
-}
-
-// 用主题色给灰阶地图上色；设备不支持混合模式时退化为半透明色罩
-function applyTint(ctx, theme, x, y, w, h) {
-  const op = theme.dark ? 'screen' : 'multiply';
-  ctx.save();
-  ctx.globalCompositeOperation = op;
-  if (ctx.globalCompositeOperation !== op) {
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.globalAlpha = 0.55;
-  }
-  ctx.fillStyle = theme.tint;
-  ctx.fillRect(x, y, w, h);
-  ctx.restore();
-}
-
-/**
- * 绘制带主题色与不透明度的地图区域。
- * 浅色：白底 -> 地图(alpha) -> multiply 主题色；深色：黑底 -> 地图(alpha) -> screen 主题色。
- * alpha=0 时恰为纯主题色。
- */
-function drawMapRegion(ctx, mapImg, x, y, w, h, tpl, info, style) {
-  const { theme } = style;
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(x, y, w, h);
-  ctx.clip();
-
-  ctx.fillStyle = theme.dark ? '#000000' : '#ffffff';
-  ctx.fillRect(x, y, w, h);
-
-  // 深色地图再压暗一档，避免 screen 叠加后主题色被“洗灰”
-  ctx.globalAlpha = theme.dark ? style.mapAlpha * 0.6 : style.mapAlpha;
-  if (mapImg) drawImageCover(ctx, mapImg, x, y, w, h);
-  else drawFallbackMap(ctx, x, y, w, h, info.seed, tpl.map.pin, theme.dark);
-  ctx.globalAlpha = 1;
-
-  applyTint(ctx, theme, x, y, w, h);
-  ctx.restore();
-}
-
-// 照片按不透明度绘制，低不透明度时会与下方的地图 / 主题色融合
-function withAlpha(ctx, alpha, draw) {
-  ctx.save();
-  ctx.globalAlpha = alpha;
-  draw();
-  ctx.restore();
+  if (categoryId === ALL_CATEGORY) return TEMPLATES.slice();
+  return TEMPLATES.filter((t) =>
+    categoryId === HOT_CATEGORY ? t.hot : t.category === categoryId || (t.also || []).includes(categoryId)
+  );
 }
 
 /* ------------------------------------------------------------------ */
@@ -365,7 +159,7 @@ function paintPolaroid(ctx, scale, assets, info, tpl, style) {
   // 底部标语
   ctx.fillStyle = hexToRgba(ink, 0.85);
   setFont(ctx, 8, 400, SERIF);
-  drawSpacedText(ctx, TAGLINE, W / 2, H - 20, 2.4, 'center');
+  drawSpacedText(ctx, sloganOf(style), W / 2, H - 20, 2.4, 'center');
 }
 
 // 样式 B：上 40% 地图 + 大字地名，下 60% 照片
@@ -393,7 +187,7 @@ function paintSplit(ctx, scale, assets, info, tpl, style) {
 
   ctx.fillStyle = style.photoAlpha >= 0.5 ? 'rgba(255,255,255,0.9)' : hexToRgba(ink, 0.8);
   setFont(ctx, 7.5, 400, SERIF);
-  drawSpacedText(ctx, TAGLINE, W / 2, H - 16, 2.2, 'center');
+  drawSpacedText(ctx, sloganOf(style), W / 2, H - 16, 2.2, 'center');
 }
 
 // 样式 C：照片全屏 + 底部渐变 + 圆形地图徽章
@@ -452,86 +246,12 @@ function paintMedallion(ctx, scale, assets, info, tpl, style) {
 
   ctx.fillStyle = onPhoto ? 'rgba(255,255,255,0.8)' : hexToRgba(ink, 0.7);
   setFont(ctx, 7.5, 400, SERIF);
-  drawSpacedText(ctx, TAGLINE, W / 2, H - 14, 2.2, 'center');
+  drawSpacedText(ctx, sloganOf(style), W / 2, H - 14, 2.2, 'center');
 }
 
 /* ------------------------------------------------------------------ */
 /* 氛围模板：杂志封面 / 胶片 / 明信片 / 画廊展签 / 玻璃卡片 / 巨字            */
 /* ------------------------------------------------------------------ */
-
-function roundedRectPath(ctx, x, y, w, h, r) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.lineTo(x + w - r, y);
-  ctx.arcTo(x + w, y, x + w, y + r, r);
-  ctx.lineTo(x + w, y + h - r);
-  ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
-  ctx.lineTo(x + r, y + h);
-  ctx.arcTo(x, y + h, x, y + h - r, r);
-  ctx.lineTo(x, y + r);
-  ctx.arcTo(x, y, x + r, y, r);
-  ctx.closePath();
-}
-
-/**
- * 以定位针为中心，从整张地图上截取 1:1 的一小块（迷你地图），并按主题上色。
- * 调用方可先设置圆角 / 圆形 clip。
- */
-function drawMapWindow(ctx, mapImg, x, y, w, h, tpl, info, style) {
-  const { theme } = style;
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(x, y, w, h);
-  ctx.clip();
-  ctx.fillStyle = theme.dark ? '#000000' : '#ffffff';
-  ctx.fillRect(x, y, w, h);
-  ctx.globalAlpha = theme.dark ? 0.6 : 1;
-  if (mapImg) {
-    const k = mapImg.width / POSTER_W;
-    const sw = Math.min(w * k, mapImg.width);
-    const sh = Math.min(h * k, mapImg.height);
-    const sx = clamp(mapImg.width * tpl.map.pin.x - sw / 2, 0, mapImg.width - sw);
-    const sy = clamp(mapImg.height * tpl.map.pin.y - sh / 2, 0, mapImg.height - sh);
-    ctx.drawImage(mapImg, sx, sy, sw, sh, x, y, w, h);
-  } else {
-    drawFallbackMap(ctx, x, y, w, h, info.seed, { x: 0.5, y: 0.5 }, theme.dark);
-  }
-  ctx.globalAlpha = 1;
-  applyTint(ctx, theme, x, y, w, h);
-  ctx.restore();
-}
-
-function photoText(style) {
-  const onPhoto = style.photoAlpha >= 0.5;
-  const ink = style.theme.ink;
-  return {
-    main: onPhoto ? '#ffffff' : ink,
-    sub: onPhoto ? 'rgba(255,255,255,0.82)' : hexToRgba(ink, 0.8)
-  };
-}
-
-// 全屏照片 + 上下暗角，杂志封面 / 玻璃卡片 / 巨字共用
-function drawFullBleedPhoto(ctx, assets, style, topShade, bottomShade) {
-  const W = POSTER_W;
-  const H = POSTER_H;
-  withAlpha(ctx, style.photoAlpha, () => {
-    drawImageCover(ctx, assets.photo, 0, 0, W, H, style.crop);
-    if (topShade) {
-      const g = ctx.createLinearGradient(0, 0, 0, H * 0.4);
-      g.addColorStop(0, `rgba(0,0,0,${topShade})`);
-      g.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = g;
-      ctx.fillRect(0, 0, W, H * 0.4);
-    }
-    if (bottomShade) {
-      const g = ctx.createLinearGradient(0, H * 0.5, 0, H);
-      g.addColorStop(0, 'rgba(0,0,0,0)');
-      g.addColorStop(1, `rgba(0,0,0,${bottomShade})`);
-      ctx.fillStyle = g;
-      ctx.fillRect(0, H * 0.5, W, H * 0.5);
-    }
-  });
-}
 
 // 杂志封面：超大衬线刊头 + 细线栏目 + 封面标语 + 迷你地图
 function paintMagazine(ctx, scale, assets, info, tpl, style) {
@@ -587,16 +307,6 @@ function paintMagazine(ctx, scale, assets, info, tpl, style) {
 
 const FILM_STRIP = { x: 44, w: POSTER_W - 88 };
 const FILM_AMBER = '#f2a03d';
-const MONTH_INDEX = { JAN: 1, FEB: 2, MAR: 3, APR: 4, MAY: 5, JUN: 6, JUL: 7, AUG: 8, SEP: 9, OCT: 10, NOV: 11, DEC: 12 };
-
-// 相机背刻风格日期： '24 06 16
-export function filmDate(dateText) {
-  const m = /^([A-Z]{3}) (\d{1,2}), (\d{4})$/.exec(dateText || '');
-  if (!m || !MONTH_INDEX[m[1]]) return dateText || '';
-  const pad = (n) => String(n).padStart(2, '0');
-  return `'${m[3].slice(2)}  ${pad(MONTH_INDEX[m[1]])}  ${pad(Number(m[2]))}`;
-}
-
 // 胶片：暗房底色 + 35mm 片基与齿孔 + 琥珀色背刻日期
 function paintFilm(ctx, scale, assets, info, tpl, style) {
   const W = POSTER_W;
@@ -642,7 +352,7 @@ function paintFilm(ctx, scale, assets, info, tpl, style) {
   ctx.shadowBlur = 5 * scale;
   ctx.fillStyle = FILM_AMBER;
   setFont(ctx, 15, 600, SANS);
-  drawSpacedText(ctx, filmDate(info.dateText), p.left, bottom + 30, 2.2, 'left');
+  drawSpacedText(ctx, filmDate(info.dateText, dateParts(info)), p.left, bottom + 30, 2.2, 'left');
   ctx.restore();
 
   ctx.fillStyle = '#efe9dd';
@@ -668,7 +378,7 @@ function paintFilm(ctx, scale, assets, info, tpl, style) {
 
   ctx.fillStyle = 'rgba(242,160,61,0.75)';
   setFont(ctx, 6, 500, SANS);
-  drawSpacedText(ctx, TAGLINE, W / 2, H - 12, 1.8, 'center');
+  drawSpacedText(ctx, sloganOf(style), W / 2, H - 12, 1.8, 'center');
 }
 
 function drawPerforatedStamp(ctx, x, y, w, h, holeColor) {
@@ -807,7 +517,7 @@ function paintPostcard(ctx, scale, assets, info, tpl, style) {
 
   ctx.fillStyle = '#8a7c66';
   setFont(ctx, 7, 400, SERIF);
-  drawSpacedText(ctx, TAGLINE, W / 2, cy + ch - 18, 2.2, 'center');
+  drawSpacedText(ctx, sloganOf(style), W / 2, cy + ch - 18, 2.2, 'center');
 }
 
 // 画廊展签：地图作墙面，黑框 + 白色卡纸 + 博物馆式说明牌
@@ -871,7 +581,7 @@ function paintGallery(ctx, scale, assets, info, tpl, style) {
 
   ctx.fillStyle = hexToRgba(ink, 0.7);
   setFont(ctx, 7.5, 400, SERIF);
-  drawSpacedText(ctx, TAGLINE, W / 2, H - 20, 2.4, 'center');
+  drawSpacedText(ctx, sloganOf(style), W / 2, H - 20, 2.4, 'center');
 }
 
 // 玻璃卡片：全屏照片 + 底部半透明深色玻璃面板（含迷你地图）
@@ -954,7 +664,7 @@ function paintGlass(ctx, scale, assets, info, tpl, style) {
   drawSpacedText(ctx, info.dateText, tx, y + 114, 1, 'left');
   ctx.fillStyle = 'rgba(255,255,255,0.55)';
   setFont(ctx, 6.5, 400, SERIF, 'italic');
-  drawSpacedText(ctx, TAGLINE, tx, y + 140, 0.9, 'left');
+  drawSpacedText(ctx, sloganOf(style), tx, y + 140, 0.9, 'left');
 }
 
 // 巨字：全屏照片 + 镂空巨型地名 + 竖排标语 + 圆形迷你地图
@@ -1019,7 +729,7 @@ function paintTypo(ctx, scale, assets, info, tpl, style) {
   ctx.rotate(-Math.PI / 2);
   ctx.fillStyle = sub;
   setFont(ctx, 6.5, 500, SERIF);
-  drawSpacedText(ctx, TAGLINE, 0, 0, 3.2, 'center');
+  drawSpacedText(ctx, sloganOf(style), 0, 0, 3.2, 'center');
   ctx.restore();
 }
 
@@ -1027,11 +737,6 @@ function paintTypo(ctx, scale, assets, info, tpl, style) {
 /* 简约模板（适合批量）：白卡 / 底栏 / 细框 / 侧栏 / 影幕 / 坐标            */
 /* 版式固定、文字量少，照片方向与地名长短不同也能保持整批统一               */
 /* ------------------------------------------------------------------ */
-
-function splitCoord(info) {
-  const parts = (info.coordText || '').split('  ');
-  return { lat: parts[0] || '', lon: parts[1] || '' };
-}
 
 // 极简白卡：宽边留白，照片下方一行细字说明
 function paintMat(ctx, scale, assets, info, tpl, style) {
@@ -1242,29 +947,6 @@ function paintCoord(ctx, scale, assets, info, tpl, style) {
   drawSpacedText(ctx, lon, m + 10, H - m - 34, 2, 'left');
 }
 
-// GEOPICS 标志：地球经纬线 + 定位点
-function drawLogoMark(ctx, cx, cy, r, color) {
-  ctx.save();
-  ctx.strokeStyle = color;
-  ctx.fillStyle = color;
-  ctx.lineWidth = 1.3;
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.lineWidth = 0.8;
-  ctx.beginPath();
-  ctx.ellipse(cx, cy, r * 0.42, r, 0, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(cx - r, cy);
-  ctx.lineTo(cx + r, cy);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.arc(cx + r * 0.62, cy - r * 0.62, r * 0.27, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.restore();
-}
-
 // 底端品牌栏：左侧标志与字标，右侧小程序码（没有码图时用文字提示）
 function drawBrandFooter(ctx, y0, style, qr) {
   const W = POSTER_W;
@@ -1373,6 +1055,9 @@ const PAINTERS = {
   cinema: paintCinema,
   coord: paintCoord
 };
+ADDED_TEMPLATES.forEach((t) => {
+  PAINTERS[t.id] = t.paint;
+});
 
 /**
  * 统一入口：在任意 2D canvas 上绘制整张海报。
@@ -1394,9 +1079,12 @@ export function paintPoster(canvas, tplId, assets, info, style) {
     return;
   }
   const tpl = TEMPLATES.find((t) => t.id === tplId) || TEMPLATES[0];
-  textAlpha = style.textAlpha;
-  PAINTERS[tpl.id](ctx, scale, assets, info, tpl, style);
-  textAlpha = 1;
+  setTextAlpha(style.textAlpha);
+  try {
+    PAINTERS[tpl.id](ctx, scale, assets, info, tpl, style);
+  } finally {
+    setTextAlpha(1);
+  }
   if (style.footer) drawBrandFooter(ctx, POSTER_H, style, assets.qr || null);
 }
 

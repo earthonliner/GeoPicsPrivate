@@ -6,7 +6,7 @@ import { paintPoster, POSTER_W, POSTER_H, posterHeight, CROP_REGIONS, DEFAULT_CR
 import { decodePhoto } from './lib/photo.js';
 import { buildMapCanvas } from './lib/tiles.js';
 import { buildStyle, buildInfo, buildMapSpec, mapKey } from './params.js';
-import * as api from './api.js';
+import { withSource } from './source.js';
 
 const PREVIEW_MAX_SIDE = 2200;
 
@@ -29,6 +29,10 @@ export class Preview {
     canvas.addEventListener('pointerup', (e) => this.onUp(e));
     canvas.addEventListener('pointercancel', (e) => this.onUp(e));
     canvas.addEventListener('wheel', (e) => this.onWheel(e), { passive: false });
+    canvas.addEventListener('dblclick', (e) => {
+      const region = this.item && CROP_REGIONS[this.item.templateId];
+      if (region && this.inRegion(this.toLogical(e), region)) this.resetCrop();
+    });
     let gestureStart = 1;
     canvas.addEventListener('gesturestart', (e) => {
       e.preventDefault();
@@ -62,6 +66,14 @@ export class Preview {
     this.schedule(16);
   }
 
+  resetCrop() {
+    const it = this.item;
+    if (!it || !it.crops[it.templateId]) return;
+    delete it.crops[it.templateId];
+    this.app.ui.syncCrop();
+    this.schedule(0);
+  }
+
   /* ---------------------------- 尺寸 ---------------------------- */
 
   layout() {
@@ -70,7 +82,7 @@ export class Preview {
     const pad = 32;
     const availW = Math.max(120, this.wrap.clientWidth - pad);
     const availH = Math.max(160, this.wrap.clientHeight - pad);
-    const w = Math.floor(Math.min(availW, availH / ratio, 560));
+    const w = Math.floor(Math.min(availW, availH / ratio, 620));
     const h = Math.round(w * ratio);
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     this.size = { w, h };
@@ -104,21 +116,34 @@ export class Preview {
     return this.logo.bitmap;
   }
 
-  async ensurePhoto(item) {
-    if (this.photo && this.photo.id === item.id && this.photo.blob === item.blob) return this.photo.image;
-    if (this.photo && typeof this.photo.image.close === 'function') this.photo.image.close();
+  ensurePhoto(item) {
+    if (this.photo && this.photo.id === item.id) return this.photo.promise;
+    this.releasePhoto();
+    const entry = { id: item.id, image: null, promise: null };
+    entry.promise = withSource(item, PREVIEW_MAX_SIDE, (blob) => decodePhoto(blob, PREVIEW_MAX_SIDE), { cache: true }).then(
+      (image) => {
+        entry.image = image;
+        item.aspect = image.width / image.height;
+        return image;
+      },
+      (err) => {
+        if (this.photo === entry) this.photo = null;
+        throw err;
+      }
+    );
+    this.photo = entry;
+    return entry.promise;
+  }
+
+  releasePhoto(item) {
+    const entry = this.photo;
+    if (!entry || (item && entry.id !== item.id)) return;
     this.photo = null;
-    let image;
-    try {
-      image = await decodePhoto(item.blob, PREVIEW_MAX_SIDE);
-    } catch (e) {
-      // 浏览器无法解码（如 Chrome 下的 HEIC）：交给 macOS sips 转成 JPEG 后重试
-      item.blob = await api.convertToJpeg(item.file, PREVIEW_MAX_SIDE);
-      image = await decodePhoto(item.blob, PREVIEW_MAX_SIDE);
-    }
-    this.photo = { id: item.id, blob: item.blob, image };
-    item.aspect = image.width / image.height;
-    return image;
+    entry.promise.then((image) => typeof image.close === 'function' && image.close(), () => {});
+  }
+
+  get photoImage() {
+    return this.photo && this.photo.image;
   }
 
   async render() {
@@ -136,18 +161,22 @@ export class Preview {
     }
 
     const style = buildStyle(settings, item);
-    const info = buildInfo(item);
+    const info = buildInfo(item, settings);
     const spec = buildMapSpec(settings, item, style, app.tileInfo());
     const key = spec ? mapKey(spec) : '';
 
     let photo;
+    const slow = setTimeout(() => id === this.renderId && app.ui.setPreviewMessage('正在读取照片…'), 250);
     try {
       photo = await this.ensurePhoto(item);
     } catch (e) {
       if (id === this.renderId) app.ui.setPreviewMessage(`无法读取这张照片：${e.message}`);
       return;
+    } finally {
+      clearTimeout(slow);
     }
     if (id !== this.renderId) return;
+    app.ui.setPreviewMessage('');
 
     const qr = await this.logoBitmap();
     if (id !== this.renderId) return;
@@ -184,7 +213,7 @@ export class Preview {
   onDown(e) {
     const item = this.item;
     const region = item && CROP_REGIONS[item.templateId];
-    if (!region || !this.photo) return;
+    if (!region || !this.photoImage) return;
     const p = this.toLogical(e);
     if (!this.inRegion(p, region)) return;
     this.canvas.setPointerCapture(e.pointerId);
@@ -194,8 +223,8 @@ export class Preview {
 
   onMove(e) {
     const g = this.gesture;
-    if (!g || !this.photo) return;
-    const { width: iw, height: ih } = this.photo.image;
+    if (!g || !this.photoImage) return;
+    const { width: iw, height: ih } = this.photoImage;
     const { region } = g;
     const cover = Math.max(region.w / iw, region.h / ih) * g.start.zoom;
     const sw = region.w / cover;
@@ -218,7 +247,7 @@ export class Preview {
   onWheel(e) {
     const item = this.item;
     const region = item && CROP_REGIONS[item.templateId];
-    if (!region || !this.photo) return;
+    if (!region || !this.photoImage) return;
     if (!this.inRegion(this.toLogical(e), region)) return;
     e.preventDefault();
     const factor = Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0025));

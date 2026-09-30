@@ -3,24 +3,85 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
   <title>GeoPhotoGraph · 本地照片地图海报</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='none' stroke='%23007AFF' stroke-width='2.4'/%3E%3Cellipse cx='16' cy='16' rx='5.5' ry='13' fill='none' stroke='%23007AFF' stroke-width='1.6'/%3E%3Cpath d='M3 16h26' stroke='%23007AFF' stroke-width='1.6'/%3E%3Ccircle cx='24' cy='8' r='3.4' fill='%23007AFF'/%3E%3C/svg%3E">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23111827'/%3E%3Cpath d='M16 26s-7-6-7-11.5a7 7 0 0 1 14 0C23 20 16 26 16 26z' fill='%23fff'/%3E%3Ccircle cx='16' cy='14.5' r='2.6' fill='%23111827'/%3E%3C/svg%3E">
+  <script>
+    (function () {
+      try {
+        var s = JSON.parse(localStorage.getItem('geophotograph.settings.v1') || '{}');
+        var a = s.appearance || 'system';
+        var dark = a === 'dark' || (a === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+      } catch (e) {
+        document.documentElement.dataset.theme = 'light';
+      }
+    })();
+  </script>
   <link rel="stylesheet" href="css/app.css">
 </head>
 <body>
-  <header class="topbar">
+  <svg class="sprite" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+    <symbol id="i-photo-add" viewBox="0 0 24 24"><rect x="3" y="6" width="14" height="13" rx="2.6"/><path d="m3.6 16.5 3.9-3.9 3 3 2-2 3.8 3.8"/><circle cx="8" cy="10.2" r="1.3"/><path d="M19.5 2.5v6M16.5 5.5h6"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7.6A2.6 2.6 0 0 1 5.6 5h3.2l2 2.2h7.6A2.6 2.6 0 0 1 21 9.8v6.6a2.6 2.6 0 0 1-2.6 2.6H5.6A2.6 2.6 0 0 1 3 16.4z"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21.2s-6.6-5.7-6.6-11.2a6.6 6.6 0 0 1 13.2 0c0 5.5-6.6 11.2-6.6 11.2z"/><circle cx="12" cy="10" r="2.4"/></symbol>
+    <symbol id="i-pin-off" viewBox="0 0 24 24"><path d="M8.2 4.6A6.6 6.6 0 0 1 18.6 10c0 1.9-.8 3.8-1.8 5.4M14.9 18.3A30 30 0 0 1 12 21.2S5.4 15.5 5.4 10c0-.9.2-1.8.5-2.6"/><path d="m3.5 3.5 17 17"/></symbol>
+    <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3"/></symbol>
+    <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></symbol>
+    <symbol id="i-keyboard" viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2.6"/><path d="M6.5 10h.01M10 10h.01M14 10h.01M17.5 10h.01M6.5 14h.01M17.5 14h.01M9.5 14h5"/></symbol>
+    <symbol id="i-export" viewBox="0 0 24 24"><path d="M12 3.5v11M7.8 7.7 12 3.5l4.2 4.2"/><path d="M5 12.5v5.9A2.6 2.6 0 0 0 7.6 21h8.8a2.6 2.6 0 0 0 2.6-2.6v-5.9"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7.8 10.8 12 15l4.2-4.2"/><path d="M5 19.5h14"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.3-4.3"/></symbol>
+    <symbol id="i-left" viewBox="0 0 24 24"><path d="m14.5 6-6 6 6 6"/></symbol>
+    <symbol id="i-right" viewBox="0 0 24 24"><path d="m9.5 6 6 6-6 6"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24"><path d="m6 9.5 6 6 6-6"/></symbol>
+    <symbol id="i-shuffle" viewBox="0 0 24 24"><path d="M16.5 4H20v3.5M4 19 20 4M20 16.5V20h-3.5M14.5 14.5 20 20M4 5l5 5"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4.5 7h15M10 11v6M14 11v6M6.5 7l.9 11.4A2 2 0 0 0 9.4 20h5.2a2 2 0 0 0 2-1.6L17.5 7M9.5 7V4.5h5V7"/></symbol>
+    <symbol id="i-expand" viewBox="0 0 24 24"><path d="M14.5 4H20v5.5M9.5 20H4v-5.5M20 4l-6.5 6.5M4 20l6.5-6.5"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8.5" y="8.5" width="11.5" height="11.5" rx="2.6"/><path d="M15.5 8.5V6.6A2.6 2.6 0 0 0 12.9 4H6.6A2.6 2.6 0 0 0 4 6.6v6.3a2.6 2.6 0 0 0 2.6 2.6h1.9"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M2.5 12h2M19.5 12h2M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.6A8.2 8.2 0 1 1 9.4 4a6.6 6.6 0 0 0 10.6 10.6z"/></symbol>
+    <symbol id="i-monitor" viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="12" rx="2.4"/><path d="M8.5 20h7M12 16.5V20"/></symbol>
+    <symbol id="i-image" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2.8"/><circle cx="9" cy="9.6" r="1.6"/><path d="m4.2 17.5 4.6-4.6 3.4 3.4 2.5-2.5 5.1 5.1"/></symbol>
+    <symbol id="i-palette" viewBox="0 0 24 24"><path d="M12 3.2a8.8 8.8 0 1 0 0 17.6c1 0 1.6-.8 1.6-1.6 0-.5-.2-.8-.5-1.1a1.6 1.6 0 0 1 1.2-2.7h1.9a4.8 4.8 0 0 0 4.8-4.8c0-4.1-4-7.4-9-7.4z"/><circle cx="7.6" cy="11.4" r="1.1"/><circle cx="10.4" cy="7.6" r="1.1"/><circle cx="14.8" cy="7.8" r="1.1"/></symbol>
+    <symbol id="i-tag" viewBox="0 0 24 24"><path d="M3.5 11.6V5A1.5 1.5 0 0 1 5 3.5h6.6l9 9-8.1 8.1z"/><circle cx="8" cy="8" r="1.4"/></symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2.6"/><path d="M3.5 10h17M8 3v4M16 3v4"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
+    <symbol id="i-camera" viewBox="0 0 24 24"><path d="M3.5 8.6A2.6 2.6 0 0 1 6.1 6h1.6l1.6-2h5.4l1.6 2h1.6a2.6 2.6 0 0 1 2.6 2.6v8.3a2.6 2.6 0 0 1-2.6 2.6H6.1a2.6 2.6 0 0 1-2.6-2.6z"/><circle cx="12" cy="12.6" r="3.4"/></symbol>
+    <symbol id="i-aperture" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="m13.96 8.6 4.88 8.45M10.04 8.6h9.75M8.07 12l4.88-8.45M10.04 15.4 5.16 6.95M13.96 15.4H4.21M15.93 12l-4.88 8.45"/></symbol>
+    <symbol id="i-reset" viewBox="0 0 24 24"><path d="M4.5 9.5h10.2a4.8 4.8 0 0 1 0 9.6H8.5"/><path d="M8.3 5.7 4.5 9.5l3.8 3.8"/></symbol>
+    <symbol id="i-crop" viewBox="0 0 24 24"><path d="M6.5 2.5v13a2 2 0 0 0 2 2h13"/><path d="M17.5 21.5v-13a2 2 0 0 0-2-2h-13"/></symbol>
+    <symbol id="i-map" viewBox="0 0 24 24"><path d="m3.5 6.6 5.5-2.3 6 2.3 5.5-2.3v13.1l-5.5 2.3-6-2.3-5.5 2.3z"/><path d="M9 4.3v13.1M15 6.6v13.1"/></symbol>
+    <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></symbol>
+    <symbol id="i-type" viewBox="0 0 24 24"><path d="M5 7V5h14v2M12 5v14M9 19h6"/></symbol>
+    <symbol id="i-sparkle" viewBox="0 0 24 24"><path d="M12 3.5 13.9 9l5.6 2-5.6 2L12 18.5 10.1 13l-5.6-2 5.6-2z"/><path d="M19 3v3M17.5 4.5h3"/></symbol>
+    <symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 3.5 8.5 4.6-8.5 4.6-8.5-4.6z"/><path d="m3.5 12.5 8.5 4.6 8.5-4.6"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="10" rx="2.6"/><path d="M8.2 10.5V8a3.8 3.8 0 0 1 7.6 0v2.5"/></symbol>
+    <symbol id="i-invert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5a8.5 8.5 0 0 1 0 17z" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-finder" viewBox="0 0 24 24"><path d="M3 7.6A2.6 2.6 0 0 1 5.6 5h3.2l2 2.2h7.6A2.6 2.6 0 0 1 21 9.8v6.6a2.6 2.6 0 0 1-2.6 2.6H5.6A2.6 2.6 0 0 1 3 16.4z"/><path d="M10 13.5h6M13.5 11l2.5 2.5-2.5 2.5"/></symbol>
+    <symbol id="i-retry" viewBox="0 0 24 24"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"/><path d="M19.5 4.5v4h-4"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M10.3 4.3 2.9 17.2A2 2 0 0 0 4.6 20h14.8a2 2 0 0 0 1.7-2.8L13.7 4.3a2 2 0 0 0-3.4 0z"/><path d="M12 9.5v4M12 16.8h.01"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="4" y="4" width="6.5" height="6.5" rx="1.6"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.6"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.6"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.6"/></symbol>
+  </svg>
+
+  <header class="toolbar">
     <div class="brand">
-      <svg viewBox="0 0 32 32" width="22" height="22" aria-hidden="true"><circle cx="16" cy="16" r="13" fill="none" stroke="currentColor" stroke-width="2.4"/><ellipse cx="16" cy="16" rx="5.5" ry="13" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3 16h26" stroke="currentColor" stroke-width="1.6"/><circle cx="24" cy="8" r="3.4" fill="currentColor"/></svg>
-      <span class="brand-name">GeoPhotoGraph</span>
-      <span class="badge">本地</span>
+      <span class="logo" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#i-pin"/></svg></span>
+      <span class="brand-text"><b>GeoPhotoGraph</b><small>本地照片地图海报</small></span>
     </div>
-    <div class="topbar-actions">
-      <button id="btn-add" class="btn">添加照片…</button>
-      <button id="btn-add-folder" class="btn">添加文件夹…</button>
-      <button id="btn-clear" class="btn ghost" disabled>清空</button>
-      <span class="spacer"></span>
-      <button id="btn-settings" class="btn ghost">设置</button>
-      <button id="btn-export" class="btn primary" disabled>导出…</button>
+    <div class="tb-group">
+      <button id="btn-add" class="btn" title="添加照片（⌘O）"><svg class="i"><use href="#i-photo-add"/></svg><span>添加照片</span></button>
+      <button id="btn-add-folder" class="btn" title="添加整个文件夹（含子文件夹）"><svg class="i"><use href="#i-folder"/></svg><span>添加文件夹</span></button>
+    </div>
+    <span class="spacer"></span>
+    <div class="tb-group">
+      <button id="btn-places" class="btn ghost" title="地点汇总：按地名批量改名、筛选" disabled><svg class="i"><use href="#i-pin"/></svg><span>地点</span><b class="count" id="places-count" hidden></b></button>
+      <button id="btn-help" class="icon-btn" title="键盘快捷键（?）"><svg class="i"><use href="#i-keyboard"/></svg></button>
+      <button id="btn-theme" class="icon-btn" title="切换外观"><svg class="i"><use id="theme-icon" href="#i-monitor"/></svg></button>
+      <button id="btn-settings" class="icon-btn" title="设置"><svg class="i"><use href="#i-gear"/></svg></button>
+      <button id="btn-export" class="btn primary" title="导出海报（⌘E）" disabled><svg class="i"><use href="#i-export"/></svg><span>导出</span><b class="count" id="export-count" hidden></b></button>
     </div>
     <input id="file-input" type="file" accept="image/*,.heic,.heif" multiple hidden>
     <input id="folder-input" type="file" webkitdirectory multiple hidden>
@@ -28,205 +89,352 @@
   </header>
 
   <main class="layout" id="layout">
-    <aside class="pane list-pane">
-      <div class="list-toolbar">
-        <label class="check-all"><input type="checkbox" id="chk-all" checked> <span id="sel-count">0 / 0</span></label>
-        <select id="sort-select" title="排序">
+    <aside class="library" id="library">
+      <div class="lib-head">
+        <label class="search">
+          <svg class="i"><use href="#i-search"/></svg>
+          <input id="lib-search" type="search" placeholder="搜索文件名或地名" title="按文件名、地名或相机型号筛选（/）" autocomplete="off" spellcheck="false">
+        </label>
+        <select id="sort-select" class="compact" title="排序">
           <option value="import">导入顺序</option>
           <option value="time">拍摄时间</option>
           <option value="name">文件名</option>
+          <option value="place">地名</option>
         </select>
-        <label class="mini-check" title="只显示没有位置信息的照片"><input type="checkbox" id="chk-noloc"> 无位置 <b id="noloc-count">0</b></label>
+      </div>
+      <div class="filters" id="lib-filters">
+        <button class="filter active" data-filter="all">全部<b>0</b></button>
+        <button class="filter" data-filter="noloc">无位置<b>0</b></button>
+        <button class="filter" data-filter="checked">已勾选<b>0</b></button>
+        <button class="filter" data-filter="done">已导出<b>0</b></button>
+        <button class="filter" data-filter="error">失败<b>0</b></button>
       </div>
       <div class="grid" id="grid"></div>
-      <div class="empty-hint" id="empty-hint">
-        <div class="drop-icon">
-          <svg viewBox="0 0 48 48" width="56" height="56"><path d="M8 34l10-12 8 9 6-7 8 10" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/><rect x="5" y="9" width="38" height="30" rx="4" fill="none" stroke="currentColor" stroke-width="2.4"/><circle cx="16" cy="18" r="3" fill="currentColor"/></svg>
+      <div class="lib-empty" id="lib-empty">
+        <div class="drop-art" aria-hidden="true">
+          <span class="sheet s1"></span><span class="sheet s2"></span>
+          <span class="sheet s3"><svg><use href="#i-pin"/></svg></span>
         </div>
-        <p class="lead">把照片或文件夹拖到这里</p>
-        <p class="muted">支持成百上千张；读取 EXIF 里的位置与拍摄日期，全程只在本机处理。</p>
+        <h2>把照片或文件夹拖到这里</h2>
+        <p>读取照片里的 GPS 位置与拍摄日期，一键生成地图海报。成百上千张也能批量处理。</p>
+        <div class="empty-actions">
+          <button class="btn primary" id="btn-empty-add"><svg class="i"><use href="#i-photo-add"/></svg><span>添加照片</span></button>
+          <button class="btn" id="btn-empty-folder"><svg class="i"><use href="#i-folder"/></svg><span>添加文件夹</span></button>
+        </div>
+        <p class="fine">JPEG · HEIC · PNG · WebP · TIFF｜照片不会上传，全部在这台电脑上处理</p>
+      </div>
+      <div class="lib-nomatch" id="lib-nomatch" hidden>
+        <svg class="i"><use href="#i-search"/></svg>
+        <span>没有符合条件的照片</span>
+        <button class="link-btn" id="btn-clear-filter">显示全部</button>
+      </div>
+      <div class="lib-foot">
+        <label class="check-all" title="勾选 / 取消勾选当前列表中的全部照片"><input type="checkbox" id="chk-all"><span id="sel-count">0 / 0</span></label>
+        <button class="icon-btn sm" id="btn-invert" title="反选"><svg class="i"><use href="#i-invert"/></svg></button>
+        <button class="icon-btn sm danger" id="btn-remove" title="从列表移除已勾选的照片（不会删除原文件）"><svg class="i"><use href="#i-trash"/></svg></button>
+        <span class="spacer"></span>
+        <svg class="i dim"><use href="#i-grid"/></svg>
+        <input type="range" id="thumb-size" class="mini-range" min="72" max="168" step="8" title="缩略图大小">
       </div>
     </aside>
 
-    <section class="pane stage">
-      <div class="stage-top">
-        <div class="seg" id="cat-seg"></div>
-        <div class="chips" id="tpl-chips"></div>
+    <section class="stage" id="stage">
+      <div class="stage-head">
+        <div class="nav">
+          <button class="icon-btn" id="btn-prev" title="上一张（←）"><svg class="i"><use href="#i-left"/></svg></button>
+          <button class="icon-btn" id="btn-next" title="下一张（→）"><svg class="i"><use href="#i-right"/></svg></button>
+          <span class="nav-index" id="nav-index"></span>
+        </div>
+        <div class="photo-title">
+          <b id="photo-name">示例照片</b>
+          <span id="photo-meta"></span>
+        </div>
+        <div class="stage-actions">
+          <button class="icon-btn" id="btn-lightbox" title="大图预览（Enter）"><svg class="i"><use href="#i-expand"/></svg></button>
+          <button class="icon-btn" id="btn-copy" title="复制海报图片（⌘C）"><svg class="i"><use href="#i-copy"/></svg></button>
+          <button class="btn sm" id="btn-export-one" title="按导出设置下载当前这张海报"><svg class="i"><use href="#i-download"/></svg><span>导出这张</span></button>
+        </div>
       </div>
       <div class="preview-wrap" id="preview-wrap">
         <canvas id="preview"></canvas>
+        <div class="sample-badge" id="sample-badge" hidden><svg class="i"><use href="#i-sparkle"/></svg>示例照片 · 导入你的照片即可替换</div>
         <div class="preview-msg" id="preview-msg" hidden></div>
+        <div class="preview-hint" id="preview-hint"></div>
       </div>
-      <div class="stage-foot">
-        <span class="hint" id="preview-hint">拖动照片调整取景，滚轮缩放</span>
-        <span class="hint" id="export-size"></span>
-      </div>
-    </section>
-
-    <aside class="pane inspector" id="inspector">
-      <section class="group">
-        <h3>模板</h3>
-        <div class="row">
-          <div class="seg" id="mode-seg">
-            <button data-mode="unique" class="active">统一模板</button>
-            <button data-mode="random">随机模板</button>
+      <section class="dock" id="dock">
+        <div class="dock-head">
+          <div class="tabs" id="cat-tabs" role="tablist"></div>
+          <div class="dock-tools">
+            <div class="seg sm" id="mode-seg" title="批量模板模式">
+              <button data-mode="unique" title="点选模板即应用到全部照片">统一模板</button>
+              <button data-mode="random" title="每张照片在当前分类内随机分配不同模板">随机模板</button>
+            </div>
+            <button class="icon-btn sm" id="btn-reshuffle" title="重新随机分配"><svg class="i"><use href="#i-shuffle"/></svg></button>
+            <button class="btn sm" id="btn-tpl-selected" title="把当前照片的模板应用到所有已勾选的照片">应用到已勾选</button>
           </div>
         </div>
-        <div class="row">
-          <button class="btn small" id="btn-reshuffle">重新随机</button>
-          <button class="btn small" id="btn-tpl-selected">当前模板应用到已勾选</button>
-        </div>
-        <p class="note" id="mode-note">统一模板：点选模板即应用到全部照片。</p>
+        <div class="tpl-strip" id="tpl-strip"></div>
       </section>
+    </section>
 
-      <section class="group">
-        <h3>地点与日期</h3>
-        <label class="field"><span>地名</span>
-          <span class="input-row"><input id="place-input" type="text" placeholder="地名" autocomplete="off" spellcheck="false"><button class="btn small" id="btn-place-reset" title="重新按坐标解析">还原</button></span>
-        </label>
-        <div class="row between"><span class="muted" id="coord-text">—</span><button class="btn small" id="btn-locate">搜索 / 手动定位…</button></div>
-        <label class="field"><span>日期</span>
-          <span class="input-row"><input id="date-input" type="date"><button class="btn small" id="btn-date-reset" title="还原为照片 EXIF 日期">还原</button></span>
-        </label>
-        <div class="row">
-          <div class="seg" id="lang-seg"><button data-lang="en" class="active">英文</button><button data-lang="zh">中文</button></div>
-          <div class="seg" id="level-seg"><button data-level="city" class="active">仅城市</button><button data-level="detail">含区域</button></div>
+    <aside class="inspector" id="inspector">
+      <div class="insp-tabs">
+        <div class="seg full" id="insp-tabs" role="tablist">
+          <button data-tab="photo"><svg class="i"><use href="#i-image"/></svg>照片</button>
+          <button data-tab="style"><svg class="i"><use href="#i-palette"/></svg>样式</button>
+          <button data-tab="brand"><svg class="i"><use href="#i-tag"/></svg>品牌</button>
         </div>
-        <div class="row apply-row">
-          <select id="apply-scope"><option value="selected">已勾选</option><option value="all">全部</option></select>
-          <button class="btn small" data-apply="both">应用地点和日期</button>
-          <button class="btn small" data-apply="place">仅地点</button>
-          <button class="btn small" data-apply="date">仅日期</button>
+      </div>
+      <div class="insp-body">
+        <div class="tab-panel" data-panel="photo">
+          <section class="group">
+            <header><svg class="i"><use href="#i-pin"/></svg><h3>地点</h3><span class="pill" id="place-status" hidden></span></header>
+            <div class="input-row">
+              <input id="place-input" type="text" placeholder="地名" autocomplete="off" spellcheck="false">
+              <button class="icon-btn sm boxed" id="btn-place-reset" title="按坐标重新解析地名"><svg class="i"><use href="#i-reset"/></svg></button>
+            </div>
+            <div class="coord-row">
+              <span class="coord" id="coord-text">—</span>
+              <button class="btn sm" id="btn-locate" title="搜索地点或输入坐标（L）"><svg class="i"><use href="#i-target"/></svg><span>定位…</span></button>
+            </div>
+            <div class="field-row"><span class="label">地名语言</span>
+              <div class="seg sm" id="lang-seg"><button data-lang="en">英文</button><button data-lang="zh">中文</button></div>
+            </div>
+            <div class="field-row"><span class="label">详细程度</span>
+              <div class="seg sm" id="level-seg"><button data-level="city">仅城市</button><button data-level="detail">含区域</button></div>
+            </div>
+          </section>
+
+          <section class="group">
+            <header><svg class="i"><use href="#i-calendar"/></svg><h3>日期</h3><span class="pill" id="date-status" hidden></span></header>
+            <div class="input-row">
+              <input id="date-input" type="date">
+              <button class="icon-btn sm boxed" id="btn-date-reset" title="还原为照片 EXIF 中的日期"><svg class="i"><use href="#i-reset"/></svg></button>
+            </div>
+            <div class="exif-meta" id="exif-meta"></div>
+          </section>
+
+          <section class="group">
+            <header><svg class="i"><use href="#i-layers"/></svg><h3>批量应用</h3></header>
+            <p class="note">把当前照片的地名 / 日期复制给其他照片。</p>
+            <div class="field-row"><span class="label">应用到</span>
+              <div class="seg sm" id="apply-scope"><button data-value="selected">已勾选</button><button data-value="all">全部</button></div>
+            </div>
+            <div class="btn-row">
+              <button class="btn sm" data-apply="place">地名</button>
+              <button class="btn sm" data-apply="date">日期</button>
+              <button class="btn sm" data-apply="both">地名和日期</button>
+            </div>
+          </section>
+
+          <section class="group" id="crop-group">
+            <header><svg class="i"><use href="#i-crop"/></svg><h3>取景</h3><button class="link-btn" id="btn-crop-reset">复位</button></header>
+            <label class="slider"><span>缩放</span><input type="range" id="crop-zoom" min="100" max="400" step="1" value="100"><output id="crop-zoom-out">1.00×</output></label>
+            <label class="slider"><span>水平</span><input type="range" id="crop-x" min="-100" max="100" step="1" value="0"><output id="crop-x-out">0</output></label>
+            <label class="slider"><span>垂直</span><input type="range" id="crop-y" min="-100" max="100" step="1" value="0"><output id="crop-y-out">0</output></label>
+            <p class="note" id="crop-note" hidden>这个模板完整显示照片，不需要取景。</p>
+          </section>
         </div>
-      </section>
 
-      <section class="group" id="crop-group">
-        <h3>照片取景 <button class="link" id="btn-crop-reset">重置</button></h3>
-        <label class="slider"><span>缩放</span><input type="range" id="crop-zoom" min="100" max="400" step="1" value="100"><output id="crop-zoom-out">100</output></label>
-        <label class="slider"><span>水平</span><input type="range" id="crop-x" min="-100" max="100" step="1" value="0"><output id="crop-x-out">0</output></label>
-        <label class="slider"><span>垂直</span><input type="range" id="crop-y" min="-100" max="100" step="1" value="0"><output id="crop-y-out">0</output></label>
-        <p class="note" id="crop-note" hidden>此模板完整显示照片，无需取景。</p>
-      </section>
+        <div class="tab-panel" data-panel="style" hidden>
+          <section class="group">
+            <header><svg class="i"><use href="#i-palette"/></svg><h3>配色</h3><span class="aside" id="theme-name"></span></header>
+            <div class="swatches" id="swatches"></div>
+            <div class="custom-color" id="custom-color" hidden>
+              <input type="color" id="custom-picker" value="#e8dfd0" title="选择颜色">
+              <input type="text" id="custom-hex" maxlength="7" value="#E8DFD0" spellcheck="false" aria-label="十六进制颜色">
+              <span class="note">浅色偏柔和、深色偏夜景</span>
+            </div>
+          </section>
 
-      <section class="group">
-        <h3>地图</h3>
-        <label class="slider"><span>缩放</span><input type="range" id="map-zoom" min="4" max="16" step="1" value="12"><output id="map-zoom-out">12</output></label>
-        <div class="swatches" id="swatches"></div>
-        <div class="row custom-color" id="custom-color" hidden>
-          <input type="color" id="custom-picker" value="#e8dfd0">
-          <input type="text" id="custom-hex" maxlength="7" value="#E8DFD0" spellcheck="false">
+          <section class="group">
+            <header><svg class="i"><use href="#i-map"/></svg><h3>地图</h3><span class="aside" id="map-zoom-label"></span></header>
+            <label class="slider"><span>缩放</span><input type="range" id="map-zoom" min="4" max="16" step="1" value="12"><output id="map-zoom-out">12</output></label>
+          </section>
+
+          <section class="group">
+            <header><svg class="i"><use href="#i-sliders"/></svg><h3>不透明度</h3><button class="link-btn" id="btn-opacity-reset">复位</button></header>
+            <label class="slider"><span>地图</span><input type="range" id="op-map" min="0" max="100" value="100"><output id="op-map-out">100</output></label>
+            <label class="slider"><span>照片</span><input type="range" id="op-photo" min="0" max="100" value="100"><output id="op-photo-out">100</output></label>
+            <label class="slider"><span>文字</span><input type="range" id="op-text" min="0" max="100" value="100"><output id="op-text-out">100</output></label>
+          </section>
+
+          <section class="group">
+            <header><svg class="i"><use href="#i-type"/></svg><h3>文字格式</h3></header>
+            <div class="field-row"><span class="label">日期</span><select id="date-format" class="compact"></select></div>
+            <div class="field-row"><span class="label">坐标</span>
+              <div class="seg sm" id="coord-format"><button data-value="dec">十进制</button><button data-value="dms">度分秒</button></div>
+            </div>
+          </section>
         </div>
-      </section>
 
-      <section class="group">
-        <h3>不透明度 <button class="link" id="btn-opacity-reset">重置</button></h3>
-        <label class="slider"><span>地图</span><input type="range" id="op-map" min="0" max="100" value="100"><output id="op-map-out">100</output></label>
-        <label class="slider"><span>照片</span><input type="range" id="op-photo" min="0" max="100" value="100"><output id="op-photo-out">100</output></label>
-        <label class="slider"><span>文字</span><input type="range" id="op-text" min="0" max="100" value="100"><output id="op-text-out">100</output></label>
-      </section>
+        <div class="tab-panel" data-panel="brand" hidden>
+          <section class="group">
+            <header><svg class="i"><use href="#i-tag"/></svg><h3>品牌底栏</h3><input type="checkbox" id="footer-toggle" class="switch" aria-label="显示品牌底栏"></header>
+            <p class="note">在海报下方加一条品牌栏，导出尺寸会随之变高。</p>
+            <label class="field"><span>品牌名</span><input id="brand-name" type="text" maxlength="20" spellcheck="false"></label>
+            <label class="field"><span>副标题</span><input id="brand-tagline" type="text" maxlength="40" spellcheck="false"></label>
+            <div class="logo-row">
+              <div class="logo-thumb" id="logo-thumb"><svg class="i"><use href="#i-image"/></svg></div>
+              <div class="logo-actions">
+                <div class="btn-row">
+                  <button class="btn sm" id="btn-logo">选择二维码 / Logo…</button>
+                  <button class="link-btn danger" id="btn-logo-clear" hidden>移除</button>
+                </div>
+                <p class="note">显示在底栏右侧，建议使用方形图片。</p>
+              </div>
+            </div>
+          </section>
 
-      <section class="group">
-        <h3>海报</h3>
-        <label class="switch-row"><span>品牌底栏</span><input type="checkbox" id="footer-toggle" class="switch" checked></label>
-        <label class="field"><span>品牌名</span><input id="brand-name" type="text" maxlength="20" spellcheck="false"></label>
-        <label class="field"><span>标语</span><input id="brand-tagline" type="text" maxlength="40" spellcheck="false"></label>
-        <div class="row">
-          <button class="btn small" id="btn-logo">选择二维码 / Logo…</button>
-          <button class="btn small ghost" id="btn-logo-clear" hidden>移除</button>
-          <span class="muted" id="logo-state"></span>
+          <section class="group">
+            <header><svg class="i"><use href="#i-sparkle"/></svg><h3>海报标语</h3><input type="checkbox" id="slogan-toggle" class="switch" aria-label="显示海报标语"></header>
+            <input id="slogan-input" type="text" maxlength="48" spellcheck="false" placeholder="CAPTURED MOMENT · LASTING PLACE">
+            <p class="note">部分模板会在海报上印一行小字标语；留空时使用默认标语。</p>
+          </section>
         </div>
-      </section>
+      </div>
+      <div class="insp-foot"><svg class="i"><use href="#i-image"/></svg><span id="export-size"></span></div>
     </aside>
   </main>
 
   <footer class="statusbar">
-    <span id="status-text">就绪</span>
-    <span class="status-bar"><i id="status-fill"></i></span>
+    <span class="status-text" id="status-text">就绪</span>
+    <span class="status-bar" id="status-bar"><i id="status-fill"></i></span>
+    <span class="spacer"></span>
+    <span class="status-info" id="status-info"></span>
+    <span class="status-local"><svg class="i"><use href="#i-lock"/></svg>照片只在本机处理</span>
   </footer>
 
-  <div class="drop-overlay" id="drop-overlay" hidden><div>松开以添加照片</div></div>
+  <div class="drop-overlay" id="drop-overlay" hidden>
+    <div class="drop-card"><svg class="i"><use href="#i-photo-add"/></svg><b>松开以添加照片</b><span>支持直接拖入文件夹</span></div>
+  </div>
 
+  <!-- 定位 -->
   <dialog id="dlg-locate" class="dialog">
-    <form method="dialog" class="dlg-body">
-      <h2>设置位置</h2>
-      <p class="muted">为当前照片搜索地点，或直接输入坐标。</p>
-      <div class="input-row"><input id="search-input" type="search" placeholder="搜索地点，例如 西湖 / Kyoto / Eiffel Tower" autocomplete="off"><button type="button" class="btn" id="btn-search">搜索</button></div>
-      <ul class="results" id="search-results"></ul>
-      <p class="muted" id="search-empty" hidden>没有找到结果。</p>
-      <hr>
-      <label class="field"><span>坐标</span><input id="coord-input" type="text" placeholder="30.2741, 120.1551  或  30.27°N 120.16°E" spellcheck="false"></label>
-      <label class="mini-check"><input type="checkbox" id="coord-gcj"> 输入的是 GCJ-02 坐标（高德 / 腾讯地图），自动转换为 WGS-84</label>
-      <div class="dlg-actions">
-        <button type="button" class="btn ghost" id="btn-locate-cancel">取消</button>
-        <button type="button" class="btn primary" id="btn-coord-apply">使用坐标</button>
+    <div class="dlg-body">
+      <header class="dlg-head"><h2>设置位置</h2><button class="icon-btn sm" data-close title="关闭"><svg class="i"><use href="#i-x"/></svg></button></header>
+      <div class="field-row"><span class="label">应用到</span>
+        <div class="seg sm" id="loc-scope">
+          <button data-value="current">当前照片</button>
+          <button data-value="selected">已勾选<b></b></button>
+          <button data-value="noloc">所有无位置<b></b></button>
+        </div>
       </div>
-    </form>
+      <div class="search-box">
+        <label class="search big">
+          <svg class="i"><use href="#i-search"/></svg>
+          <input id="search-input" type="search" placeholder="搜索地点，例如 西湖 / Kyoto / Eiffel Tower" autocomplete="off" spellcheck="false">
+        </label>
+        <button class="btn" id="btn-search">搜索</button>
+      </div>
+      <ul class="results" id="search-results"></ul>
+      <p class="note center" id="search-empty" hidden>没有找到结果，换个关键词试试。</p>
+      <div class="divider"><span>或直接输入坐标</span></div>
+      <div class="input-row">
+        <input id="coord-input" type="text" placeholder="30.2741, 120.1551  或  30°16′N 120°09′E" spellcheck="false">
+        <button class="btn primary" id="btn-coord-apply">使用坐标</button>
+      </div>
+      <label class="check"><input type="checkbox" id="coord-gcj"><span>这是 GCJ-02 坐标（高德 / 腾讯地图），自动转换为 WGS-84</span></label>
+    </div>
   </dialog>
 
+  <!-- 地点汇总 -->
+  <dialog id="dlg-places" class="dialog">
+    <div class="dlg-body" tabindex="-1" autofocus>
+      <header class="dlg-head"><h2>地点汇总</h2><button class="icon-btn sm" data-close title="关闭"><svg class="i"><use href="#i-x"/></svg></button></header>
+      <p class="note">直接修改地名（回车确认）会应用到该地名下的所有照片；「只勾选这些」方便单独换模板或导出。</p>
+      <div class="places" id="places-list"></div>
+      <div class="places-noloc" id="places-noloc" hidden>
+        <svg class="i"><use href="#i-pin-off"/></svg>
+        <span id="places-noloc-text"></span>
+        <button class="btn sm" id="btn-places-locate">批量定位…</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- 导出 -->
   <dialog id="dlg-export" class="dialog wide">
-    <form method="dialog" class="dlg-body">
-      <h2>导出海报</h2>
-      <div class="cols">
+    <div class="dlg-body" tabindex="-1" autofocus>
+      <header class="dlg-head"><h2>导出海报</h2><button class="icon-btn sm" data-close title="关闭"><svg class="i"><use href="#i-x"/></svg></button></header>
+      <div class="form-grid">
+        <span class="label">范围</span>
+        <div class="seg" id="ex-scope"><button data-value="selected">已勾选<b></b></button><button data-value="all">全部<b></b></button><button data-value="current">仅当前</button></div>
+
+        <span class="label">输出到</span>
         <div>
-          <label class="field"><span>范围</span>
-            <select id="ex-scope"><option value="selected">已勾选的照片</option><option value="all">全部照片</option><option value="current">仅当前照片</option></select>
-          </label>
-          <label class="field"><span>输出方式</span>
-            <select id="ex-mode">
-              <option value="folder">保存到本机文件夹</option>
-              <option value="zip">打包 ZIP 下载</option>
-              <option value="fsa">选择文件夹（浏览器直写）</option>
-            </select>
-          </label>
+          <div class="seg" id="ex-mode"><button data-value="folder">本机文件夹</button><button data-value="zip">ZIP 下载</button><button data-value="fsa">选择文件夹…</button></div>
           <p class="note" id="ex-mode-note"></p>
-          <label class="field"><span>文件名</span><input id="ex-pattern" type="text" spellcheck="false"></label>
-          <p class="note">可用：{name} 原文件名 · {place} 地名 · {date} 日期 · {template} 模板 · {index} 序号</p>
         </div>
+
+        <span class="label">格式</span>
+        <div class="inline">
+          <div class="seg" id="ex-format"><button data-value="jpeg">JPEG</button><button data-value="png">PNG</button></div>
+          <label class="slider grow" id="ex-quality-row"><span>质量</span><input type="range" id="ex-quality" min="60" max="100" value="92"><output id="ex-quality-out">92</output></label>
+        </div>
+
+        <span class="label">尺寸</span>
+        <div class="seg" id="ex-scale"><button data-value="2">2× · 800 px</button><button data-value="3">3× · 1200 px</button><button data-value="4">4× · 1600 px</button></div>
+
+        <span class="label">文件名</span>
         <div>
-          <label class="field"><span>格式</span>
-            <select id="ex-format"><option value="jpeg">JPEG</option><option value="png">PNG（无损，体积大）</option></select>
-          </label>
-          <label class="field"><span>分辨率</span>
-            <select id="ex-scale"><option value="2">2× (800 px 宽)</option><option value="3">3× (1200 px 宽)</option><option value="4">4× (1600 px 宽)</option></select>
-          </label>
-          <label class="slider"><span>JPEG 质量</span><input type="range" id="ex-quality" min="60" max="100" value="92"><output id="ex-quality-out">92</output></label>
-          <label class="field"><span>并行线程</span>
-            <select id="ex-workers"></select>
-          </label>
-          <label class="field"><span>原图长边上限</span>
-            <select id="ex-maxside"><option value="1600">1600 px（最快）</option><option value="2560">2560 px</option><option value="4096">4096 px（高质量取景）</option></select>
-          </label>
+          <input id="ex-pattern" type="text" spellcheck="false" autocomplete="off">
+          <div class="tokens" id="ex-tokens">
+            <button data-token="{name}">原文件名</button><button data-token="{place}">地名</button><button data-token="{date}">日期</button><button data-token="{template}">模板</button><button data-token="{index}">序号</button>
+          </div>
+          <p class="note">示例：<code id="ex-name-preview"></code></p>
         </div>
       </div>
+      <details class="advanced">
+        <summary><svg class="i"><use href="#i-down"/></svg>高级</summary>
+        <div class="form-grid">
+          <span class="label">并行线程</span><select id="ex-workers" class="compact"></select>
+          <span class="label">原图长边</span>
+          <select id="ex-maxside" class="compact"><option value="1600">1600 px（最快）</option><option value="2560">2560 px（推荐）</option><option value="4096">4096 px（大幅取景更清晰）</option></select>
+        </div>
+      </details>
       <p class="summary" id="ex-summary"></p>
       <div class="dlg-actions">
-        <button type="button" class="btn ghost" id="btn-export-cancel">取消</button>
-        <button type="button" class="btn primary" id="btn-export-go">开始导出</button>
+        <button type="button" class="btn" id="btn-export-cancel">取消</button>
+        <button type="button" class="btn primary" id="btn-export-go"><svg class="i"><use href="#i-export"/></svg><span>开始导出</span></button>
       </div>
-    </form>
+    </div>
   </dialog>
 
+  <!-- 导出进度 -->
   <dialog id="dlg-progress" class="dialog">
-    <div class="dlg-body">
-      <h2 id="pg-title">正在导出…</h2>
+    <div class="dlg-body" tabindex="-1" autofocus>
+      <div class="pg-head">
+        <div class="pg-pct" id="pg-pct">0%</div>
+        <div>
+          <h2 id="pg-title">正在导出…</h2>
+          <p id="pg-line" class="muted">0 / 0</p>
+        </div>
+      </div>
       <div class="progress"><i id="pg-fill"></i></div>
-      <p id="pg-line" class="muted">0 / 0</p>
-      <p id="pg-sub" class="muted"></p>
+      <p id="pg-sub" class="note"></p>
       <ul class="errors" id="pg-errors" hidden></ul>
       <div class="dlg-actions">
-        <button type="button" class="btn ghost" id="btn-pg-reveal" hidden>在访达中显示</button>
-        <button type="button" class="btn" id="btn-pg-retry" hidden>重试失败项</button>
+        <button type="button" class="btn" id="btn-pg-reveal" hidden><svg class="i"><use href="#i-finder"/></svg><span>在访达中显示</span></button>
+        <button type="button" class="btn" id="btn-pg-retry" hidden><svg class="i"><use href="#i-retry"/></svg><span>重试失败项</span></button>
+        <span class="spacer"></span>
         <button type="button" class="btn" id="btn-pg-cancel">取消</button>
         <button type="button" class="btn primary" id="btn-pg-close" hidden>完成</button>
       </div>
     </div>
   </dialog>
 
+  <!-- 设置 -->
   <dialog id="dlg-settings" class="dialog wide">
-    <form method="dialog" class="dlg-body">
-      <h2>设置</h2>
+    <form class="dlg-body" id="cfg-form" tabindex="-1" autofocus>
+      <header class="dlg-head"><h2>设置</h2><button type="button" class="icon-btn sm" data-close title="关闭"><svg class="i"><use href="#i-x"/></svg></button></header>
       <div class="cols">
         <div>
+          <h4>外观</h4>
+          <div class="seg full" id="cfg-appearance">
+            <button type="button" data-value="system"><svg class="i"><use href="#i-monitor"/></svg>跟随系统</button>
+            <button type="button" data-value="light"><svg class="i"><use href="#i-sun"/></svg>浅色</button>
+            <button type="button" data-value="dark"><svg class="i"><use href="#i-moon"/></svg>深色</button>
+          </div>
           <h4>底图</h4>
           <label class="field"><span>地图来源</span>
             <select id="cfg-map">
@@ -247,17 +455,71 @@
             <select id="cfg-geocoder"><option value="auto">自动（有 Mapbox token 用 Mapbox）</option><option value="nominatim">Nominatim（OpenStreetMap）</option><option value="mapbox">Mapbox</option></select>
           </label>
           <label class="field"><span>输出目录</span><input id="cfg-outdir" type="text" spellcheck="false"></label>
-          <p class="note" id="cfg-note"></p>
+          <h4>编辑记忆</h4>
+          <label class="switch-row">
+            <span>记住每张照片的修改<small>再次导入同一批照片时，自动恢复地名、日期、定位、模板与取景</small></span>
+            <input type="checkbox" class="switch" id="cfg-remember">
+          </label>
+          <div class="row between"><span class="note" id="cfg-edits-count"></span><button type="button" class="btn sm" id="btn-clear-edits">清除已保存的修改</button></div>
         </div>
       </div>
+      <p class="note" id="cfg-note"></p>
       <div class="dlg-actions">
-        <button type="button" class="btn ghost" id="btn-cfg-cancel">取消</button>
-        <button type="button" class="btn primary" id="btn-cfg-save">保存</button>
+        <button type="button" class="btn" id="btn-cfg-cancel">取消</button>
+        <button type="submit" class="btn primary" id="btn-cfg-save">保存</button>
       </div>
     </form>
   </dialog>
 
-  <div class="toast" id="toast" hidden></div>
+  <!-- 快捷键 -->
+  <dialog id="dlg-help" class="dialog">
+    <div class="dlg-body" tabindex="-1" autofocus>
+      <header class="dlg-head"><h2>键盘快捷键</h2><button class="icon-btn sm" data-close title="关闭"><svg class="i"><use href="#i-x"/></svg></button></header>
+      <dl class="keys">
+        <dt><kbd>←</kbd><kbd>→</kbd></dt><dd>上一张 / 下一张</dd>
+        <dt><kbd>↑</kbd><kbd>↓</kbd></dt><dd>在网格中上下移动</dd>
+        <dt><kbd>[</kbd><kbd>]</kbd></dt><dd>上一个 / 下一个模板</dd>
+        <dt><kbd>Space</kbd></dt><dd>勾选 / 取消勾选当前照片</dd>
+        <dt><kbd data-mod>⌘</kbd><kbd>A</kbd></dt><dd>勾选列表中的全部照片</dd>
+        <dt><kbd>⇧</kbd><kbd data-mod>⌘</kbd><kbd>A</kbd></dt><dd>取消全部勾选</dd>
+        <dt><kbd>⌫</kbd></dt><dd>从列表移除当前照片（可撤销）</dd>
+        <dt><kbd>Enter</kbd></dt><dd>大图预览（导出分辨率）</dd>
+        <dt><kbd data-mod>⌘</kbd><kbd>C</kbd></dt><dd>复制当前海报图片</dd>
+        <dt><kbd>L</kbd></dt><dd>设置位置</dd>
+        <dt><kbd data-mod>⌘</kbd><kbd>O</kbd></dt><dd>添加照片</dd>
+        <dt><kbd data-mod>⌘</kbd><kbd>E</kbd></dt><dd>导出</dd>
+        <dt><kbd>?</kbd></dt><dd>显示本帮助</dd>
+      </dl>
+      <p class="note">单击缩略图预览；<kbd data-mod>⌘</kbd> + 单击勾选；<kbd>⇧</kbd> + 单击连续勾选；双击打开大图。</p>
+    </div>
+  </dialog>
+
+  <!-- 确认 -->
+  <dialog id="dlg-confirm" class="dialog narrow">
+    <div class="dlg-body">
+      <h2 id="confirm-title"></h2>
+      <p class="muted" id="confirm-text"></p>
+      <div class="dlg-actions">
+        <button type="button" class="btn" id="confirm-cancel">取消</button>
+        <button type="button" class="btn primary" id="confirm-ok">确定</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- 大图预览 -->
+  <div class="lightbox" id="lightbox" hidden>
+    <div class="lb-bar">
+      <div class="lb-title"><b id="lb-title"></b><span id="lb-info"></span></div>
+      <button class="icon-btn" id="lb-copy" title="复制图片"><svg class="i"><use href="#i-copy"/></svg></button>
+      <button class="icon-btn" id="lb-download" title="下载这张"><svg class="i"><use href="#i-download"/></svg></button>
+      <button class="icon-btn" id="lb-close" title="关闭（Esc）"><svg class="i"><use href="#i-x"/></svg></button>
+    </div>
+    <button class="lb-nav prev" id="lb-prev" title="上一张（←）"><svg class="i"><use href="#i-left"/></svg></button>
+    <div class="lb-stage" id="lb-stage"><img id="lb-img" alt=""><div class="spinner" id="lb-spin"></div></div>
+    <button class="lb-nav next" id="lb-next" title="下一张（→）"><svg class="i"><use href="#i-right"/></svg></button>
+  </div>
+
+  <div class="toast" id="toast" role="status" hidden><span id="toast-text"></span><button class="toast-action" id="toast-action" hidden></button></div>
   <script type="module" src="js/app.js"></script>
 </body>
 </html>

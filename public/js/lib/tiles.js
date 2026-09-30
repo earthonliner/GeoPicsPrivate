@@ -77,9 +77,9 @@ export function drawMapPin(ctx, x, y, s) {
 }
 
 /**
- * @param {object} opts { lat, lon, zoom, width, height, pin, dark, base, tiles }
- *   width / height 为逻辑像素，输出 canvas 为 (width * 2) x (height * 2)；
- *   tiles 为 providers.tileInfo() 的结果
+ * @param {object} opts { lat, lon, zoom, width, height, pin, dark, base, tiles, pixelScale }
+ *   width / height 为逻辑像素，输出 canvas 为 (width * pixelScale) x (height * pixelScale)，默认 2 倍；
+ *   模板缩略图用 0.5 倍即可。tiles 为 providers.tileInfo() 的结果
  * @returns {Promise<OffscreenCanvas|null>} 所有瓦片都失败时返回 null（调用方回退到本地底图）
  */
 export async function buildMapCanvas(opts) {
@@ -87,7 +87,7 @@ export async function buildMapCanvas(opts) {
   const info = opts.tiles || tileInfo({});
   const plan = tilePlan({ lat, lon, zoom, width, height, pin, tileScale: info.scale, maxZoom: info.maxZoom });
   const style = dark ? info.darkStyle : 'light';
-  const s = MAP_PIXEL_SCALE;
+  const s = opts.pixelScale || MAP_PIXEL_SCALE;
 
   const bitmaps = await Promise.all(plan.tiles.map((t) => fetchTileBitmap(base, info.id, style, t.z, t.x, t.y)));
   if (!bitmaps.some(Boolean)) return null;
