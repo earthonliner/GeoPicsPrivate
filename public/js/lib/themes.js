@@ -50,6 +50,15 @@ export function hexToRgba(hex, alpha) {
   return `rgba(${r},${g},${b},${alpha})`;
 }
 
+const toHex2 = (n) => Math.round(Math.max(0, Math.min(255, n))).toString(16).padStart(2, '0');
+
+// 两色线性混合：t=0 为 a，t=1 为 b
+export function mixHex(a, b, t) {
+  const x = hexToRgb(a);
+  const y = hexToRgb(b);
+  return `#${toHex2(x.r + (y.r - x.r) * t)}${toHex2(x.g + (y.g - x.g) * t)}${toHex2(x.b + (y.b - x.b) * t)}`.toUpperCase();
+}
+
 // 感知亮度 0~1
 export function luminance(hex) {
   const { r, g, b } = hexToRgb(hex);
