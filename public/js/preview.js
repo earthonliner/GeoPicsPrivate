@@ -29,6 +29,10 @@ export class Preview {
     canvas.addEventListener('pointerup', (e) => this.onUp(e));
     canvas.addEventListener('pointercancel', (e) => this.onUp(e));
     canvas.addEventListener('wheel', (e) => this.onWheel(e), { passive: false });
+    canvas.addEventListener('dblclick', (e) => {
+      const region = this.item && CROP_REGIONS[this.item.templateId];
+      if (region && this.inRegion(this.toLogical(e), region)) this.resetCrop();
+    });
     let gestureStart = 1;
     canvas.addEventListener('gesturestart', (e) => {
       e.preventDefault();
@@ -62,6 +66,14 @@ export class Preview {
     this.schedule(16);
   }
 
+  resetCrop() {
+    const it = this.item;
+    if (!it || !it.crops[it.templateId]) return;
+    delete it.crops[it.templateId];
+    this.app.ui.syncCrop();
+    this.schedule(0);
+  }
+
   /* ---------------------------- 尺寸 ---------------------------- */
 
   layout() {
@@ -70,7 +82,7 @@ export class Preview {
     const pad = 32;
     const availW = Math.max(120, this.wrap.clientWidth - pad);
     const availH = Math.max(160, this.wrap.clientHeight - pad);
-    const w = Math.floor(Math.min(availW, availH / ratio, 560));
+    const w = Math.floor(Math.min(availW, availH / ratio, 620));
     const h = Math.round(w * ratio);
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     this.size = { w, h };
@@ -154,13 +166,17 @@ export class Preview {
     const key = spec ? mapKey(spec) : '';
 
     let photo;
+    const slow = setTimeout(() => id === this.renderId && app.ui.setPreviewMessage('正在读取照片…'), 250);
     try {
       photo = await this.ensurePhoto(item);
     } catch (e) {
       if (id === this.renderId) app.ui.setPreviewMessage(`无法读取这张照片：${e.message}`);
       return;
+    } finally {
+      clearTimeout(slow);
     }
     if (id !== this.renderId) return;
+    app.ui.setPreviewMessage('');
 
     const qr = await this.logoBitmap();
     if (id !== this.renderId) return;
