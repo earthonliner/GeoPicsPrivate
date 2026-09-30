@@ -90,7 +90,8 @@ try {
   check(true, `导入 ${COUNT} 张`);
   check(await app(page, () => !window.__app.current.isSample), '导入后示例照片被替换');
 
-  // 带 EXIF 方向 6 的横幅照片在缩略图里应当是竖幅（方向已自动应用）
+  // 带 EXIF 方向 6 的横幅照片在缩略图里应当是竖幅（方向已自动应用）；缩略图懒加载，先滚动到它
+  await app(page, () => window.__app.library.reveal(window.__app.items.find((i) => /-013\./.test(i.name))));
   await page.waitForFunction(() => {
     const it = window.__app.items.find((i) => /-013\./.test(i.name));
     return it && (it.thumbState === 'ready' || it.thumbState === 'error');
@@ -114,10 +115,10 @@ try {
   await sleep(400);
   const found = await app(page, () => window.__app.library.view.length);
   check(found > 0 && found < COUNT, `搜索「tokyo」匹配 ${found} 张`);
-  await page.click('#lib-search', { clickCount: 3 });
-  await page.keyboard.press('Backspace');
-  await sleep(400);
-  check((await app(page, () => window.__app.library.view.length)) === COUNT, '清空搜索恢复全部');
+  await page.focus('#lib-search');
+  await page.keyboard.press('Escape');
+  await sleep(200);
+  check((await app(page, () => window.__app.library.view.length)) === COUNT, 'Esc 清空搜索恢复全部');
 
   await app(page, () => document.activeElement && document.activeElement.blur());
   const firstId = await app(page, () => window.__app.current.id);
@@ -198,6 +199,9 @@ try {
   await page.waitForSelector('#lb-img.ready', { timeout: 60000 });
   const lb = await page.$eval('#lb-img', (img) => ({ w: img.naturalWidth, h: img.naturalHeight }));
   check(lb.w === 1200, `大图预览按导出尺寸渲染（${lb.w} × ${lb.h}）`);
+  const fits = await page.$eval('#lb-img', (img) => img.getBoundingClientRect().bottom <= window.innerHeight);
+  check(fits, '大图完整显示在窗口内');
+  await sleep(400);
   await page.screenshot({ path: out('04-lightbox.png') });
   await page.keyboard.press('Escape');
   check(await page.$eval('#lightbox', (e) => e.hidden), 'Esc 关闭大图');

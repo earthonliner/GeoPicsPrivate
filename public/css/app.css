@@ -492,6 +492,7 @@ kbd {
   padding: 4px 12px 14px;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(var(--thumb), 1fr));
+  grid-auto-rows: max-content;
   gap: 8px;
   align-content: start;
   outline: none;
@@ -503,8 +504,6 @@ kbd {
   overflow: hidden;
   background: var(--card-ph);
   cursor: pointer;
-  content-visibility: auto;
-  contain-intrinsic-size: var(--thumb) var(--thumb);
   user-select: none;
   -webkit-user-select: none;
 }
@@ -649,7 +648,7 @@ kbd {
   padding: 0 12px;
   border-top: 1px solid var(--line);
 }
-.check-all { display: flex; align-items: center; gap: 7px; margin-right: 4px; font-size: 12px; color: var(--text-2); font-variant-numeric: tabular-nums; cursor: pointer; }
+.check-all { flex: none; display: flex; align-items: center; gap: 7px; margin-right: 4px; font-size: 12px; color: var(--text-2); font-variant-numeric: tabular-nums; white-space: nowrap; cursor: pointer; }
 .mini-range { width: 78px; margin-left: 6px; }
 
 /* ---------------------------- 舞台 ---------------------------- */
@@ -952,6 +951,7 @@ kbd {
 .dialog[open] { animation: dlg-in 0.2s var(--ease); }
 @keyframes dlg-in { from { opacity: 0; transform: translateY(8px) scale(0.98); } }
 .dlg-body { display: flex; flex-direction: column; gap: 14px; padding: 18px 20px 20px; }
+.dlg-body:focus { outline: none; }
 .dlg-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: -4px -6px -2px 0; }
 .dlg-body h2 { margin: 0; font-size: 16px; font-weight: 650; letter-spacing: -0.01em; }
 .dlg-body h4 { margin: 4px 0 -4px; font-size: 11.5px; font-weight: 600; letter-spacing: 0.02em; color: var(--text-2); }
@@ -1078,7 +1078,7 @@ kbd {
 .lb-title span { font-size: 12px; color: rgba(255, 255, 255, 0.55); white-space: nowrap; }
 .lightbox .icon-btn { color: rgba(255, 255, 255, 0.8); }
 .lightbox .icon-btn:hover:not(:disabled) { background: rgba(255, 255, 255, 0.12); color: #fff; }
-.lb-stage { position: relative; display: grid; place-items: center; min-height: 0; padding: 4px 84px 28px; }
+.lb-stage { position: relative; display: grid; grid-template: minmax(0, 1fr) / minmax(0, 1fr); place-items: center; min-height: 0; padding: 4px 84px 28px; }
 .lb-stage img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 2px; box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55); opacity: 0; transition: opacity 0.2s; }
 .lb-stage img.ready { opacity: 1; }
 .lb-nav {

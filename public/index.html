@@ -92,7 +92,7 @@
       <div class="lib-head">
         <label class="search">
           <svg class="i"><use href="#i-search"/></svg>
-          <input id="lib-search" type="search" placeholder="搜索文件名、地名、相机" autocomplete="off" spellcheck="false">
+          <input id="lib-search" type="search" placeholder="搜索文件名或地名" title="按文件名、地名或相机型号筛选（/）" autocomplete="off" spellcheck="false">
         </label>
         <select id="sort-select" class="compact" title="排序">
           <option value="import">导入顺序</option>
@@ -339,9 +339,9 @@
 
   <!-- 地点汇总 -->
   <dialog id="dlg-places" class="dialog">
-    <div class="dlg-body">
+    <div class="dlg-body" tabindex="-1" autofocus>
       <header class="dlg-head"><h2>地点汇总</h2><button class="icon-btn sm" data-close title="关闭"><svg class="i"><use href="#i-x"/></svg></button></header>
-      <p class="note">直接修改地名会同时应用到该地名下的所有照片；“勾选”只勾选这些照片，方便单独换模板或导出。</p>
+      <p class="note">直接修改地名（回车确认）会应用到该地名下的所有照片；「只勾选这些」方便单独换模板或导出。</p>
       <div class="places" id="places-list"></div>
       <div class="places-noloc" id="places-noloc" hidden>
         <svg class="i"><use href="#i-pin-off"/></svg>
@@ -353,7 +353,7 @@
 
   <!-- 导出 -->
   <dialog id="dlg-export" class="dialog wide">
-    <div class="dlg-body">
+    <div class="dlg-body" tabindex="-1" autofocus>
       <header class="dlg-head"><h2>导出海报</h2><button class="icon-btn sm" data-close title="关闭"><svg class="i"><use href="#i-x"/></svg></button></header>
       <div class="form-grid">
         <span class="label">范围</span>
@@ -401,7 +401,7 @@
 
   <!-- 导出进度 -->
   <dialog id="dlg-progress" class="dialog">
-    <div class="dlg-body">
+    <div class="dlg-body" tabindex="-1" autofocus>
       <div class="pg-head">
         <div class="pg-pct" id="pg-pct">0%</div>
         <div>
@@ -424,7 +424,7 @@
 
   <!-- 设置 -->
   <dialog id="dlg-settings" class="dialog wide">
-    <div class="dlg-body">
+    <div class="dlg-body" tabindex="-1" autofocus>
       <header class="dlg-head"><h2>设置</h2><button class="icon-btn sm" data-close title="关闭"><svg class="i"><use href="#i-x"/></svg></button></header>
       <div class="cols">
         <div>
@@ -472,7 +472,7 @@
 
   <!-- 快捷键 -->
   <dialog id="dlg-help" class="dialog">
-    <div class="dlg-body">
+    <div class="dlg-body" tabindex="-1" autofocus>
       <header class="dlg-head"><h2>键盘快捷键</h2><button class="icon-btn sm" data-close title="关闭"><svg class="i"><use href="#i-x"/></svg></button></header>
       <dl class="keys">
         <dt><kbd>←</kbd><kbd>→</kbd></dt><dd>上一张 / 下一张</dd>
