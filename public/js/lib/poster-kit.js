@@ -339,8 +339,9 @@ export function drawMapRegion(ctx, mapImg, x, y, w, h, tpl, info, style) {
 /**
  * 以定位针为中心，从整张地图上截取 1:1 的一小块（迷你地图），并按主题上色。
  * 调用方可先设置圆角 / 圆形 clip。
+ * lift：针尖落在窗口中心下方 lift 个单位。针高约 14 单位，窗口太小时用它把整枚针移到中间。
  */
-export function drawMapWindow(ctx, mapImg, x, y, w, h, tpl, info, style) {
+export function drawMapWindow(ctx, mapImg, x, y, w, h, tpl, info, style, lift = 0) {
   const { theme } = style;
   ctx.save();
   ctx.beginPath();
@@ -354,7 +355,7 @@ export function drawMapWindow(ctx, mapImg, x, y, w, h, tpl, info, style) {
     const sw = Math.min(w * k, mapImg.width);
     const sh = Math.min(h * k, mapImg.height);
     const sx = clamp(mapImg.width * tpl.map.pin.x - sw / 2, 0, mapImg.width - sw);
-    const sy = clamp(mapImg.height * tpl.map.pin.y - sh / 2, 0, mapImg.height - sh);
+    const sy = clamp(mapImg.height * tpl.map.pin.y - sh / 2 - lift * k, 0, mapImg.height - sh);
     ctx.drawImage(mapImg, sx, sy, sw, sh, x, y, w, h);
   } else {
     drawFallbackMap(ctx, x, y, w, h, info.seed, { x: 0.5, y: 0.5 }, theme.dark);
@@ -445,6 +446,29 @@ export function drawGrain(ctx, x, y, w, h, seed, color, density) {
   }
 }
 
+// GEOPICS 标志：地球经纬线 + 定位点
+export function drawLogoMark(ctx, cx, cy, r, color) {
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.fillStyle = color;
+  ctx.lineWidth = 1.3 * Math.min(1, r / 9);
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.lineWidth = 0.8 * Math.min(1, r / 9);
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, r * 0.42, r, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(cx - r, cy);
+  ctx.lineTo(cx + r, cy);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(cx + r * 0.62, cy - r * 0.62, r * 0.27, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
 // 小飞机图标（朝右），size 为机身长度
 export function drawPlane(ctx, x, y, size, color) {
   const s = size / 24;
@@ -504,6 +528,16 @@ export function paperOf(theme) {
 export function vividOf(theme, fallback, s = 0.72, v = 1) {
   if (isNeutral(theme.tint)) return fallback;
   return hsvToHex(hexToHsv(theme.tint).h, s, v);
+}
+
+// 纯色块上的文字颜色：亮色块（黄 / 青 / 薄荷绿等）用深色字，其余用白字
+export const inkOn = (bg, darkInk = '#1C1C1E') => (luminance(bg) > 0.62 ? darkInk : '#FFFFFF');
+
+// 压暗到感知亮度不超过 max，保证叠在上面的白字可读
+export function capLuminance(hex, max) {
+  let c = hex;
+  for (let i = 0; i < 12 && luminance(c) > max; i += 1) c = mixHex(c, '#000000', 0.1);
+  return c;
 }
 
 export { hexToRgba, mixHex, luminance };

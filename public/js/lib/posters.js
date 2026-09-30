@@ -2,7 +2,7 @@
  * posters.js
  *
  * 模板注册表与原版 15 种海报模板的 Canvas 2D 绘制代码，移植自 GeoPhotoGraph 小程序（earthonliner/GeoPhotoGraph）；
- * 新增模板见 posters-more.js，公共绘制部件见 poster-kit.js。
+ * 新增模板见 posters-more.js / posters-extra.js，公共绘制部件见 poster-kit.js。
  * 只依赖标准 Canvas 2D API，因此可同时运行在主线程（HTMLCanvasElement）与
  * Web Worker（OffscreenCanvas）中：预览与批量导出共用同一份绘制逻辑。
  *
@@ -12,9 +12,11 @@
 import {
   POSTER_W, POSTER_H, FOOTER_H, FULL_PHOTO, SANS, SERIF, TAGLINE, CENTER_PIN, tplMap, brandOf, sloganOf,
   setFont, measureSpaced, drawSpacedText, fitFontSize, setTextAlpha, drawImageCover, fitInside, withAlpha,
-  drawMapRegion, drawMapWindow, roundedRectPath, photoText, drawFullBleedPhoto, splitCoord, filmDate, dateParts, hexToRgba
+  drawMapRegion, drawMapWindow, roundedRectPath, photoText, drawFullBleedPhoto, splitCoord, filmDate, dateParts, hexToRgba,
+  drawLogoMark
 } from './poster-kit.js';
 import { MORE_TEMPLATES, MORE_CATEGORIES } from './posters-more.js';
+import { EXTRA_TEMPLATES, EXTRA_CATEGORIES } from './posters-extra.js';
 
 export {
   POSTER_W, POSTER_H, EXPORT_SCALE, FOOTER_H, MAX_CROP_ZOOM, posterHeight, exportSizeText, TAGLINE, DEFAULT_BRAND,
@@ -68,12 +70,13 @@ const BASE_TEMPLATES = [
   { id: 'gallery', name: '画廊展签', category: 'retro', map: tplMap({ x: 0.9, y: 0.28 }) }
 ];
 
-MORE_TEMPLATES.forEach((t) => {
+const ADDED_TEMPLATES = MORE_TEMPLATES.concat(EXTRA_TEMPLATES);
+ADDED_TEMPLATES.forEach((t) => {
   if (t.crop) CROP_REGIONS[t.id] = t.crop;
 });
 
 export const TEMPLATES = BASE_TEMPLATES.concat(
-  MORE_TEMPLATES.map(({ paint, crop, ...meta }) => meta)
+  ADDED_TEMPLATES.map(({ paint, crop, ...meta }) => meta)
 );
 
 export const HOT_CATEGORY = 'hot';
@@ -85,7 +88,7 @@ export const CATEGORIES = [
   { id: 'classic', name: '经典' },
   { id: 'editorial', name: '杂志' },
   { id: 'retro', name: '复古' }
-].concat(MORE_CATEGORIES);
+].concat(MORE_CATEGORIES, EXTRA_CATEGORIES);
 
 export function templatesOf(categoryId) {
   if (categoryId === ALL_CATEGORY) return TEMPLATES.slice();
@@ -944,29 +947,6 @@ function paintCoord(ctx, scale, assets, info, tpl, style) {
   drawSpacedText(ctx, lon, m + 10, H - m - 34, 2, 'left');
 }
 
-// GEOPICS 标志：地球经纬线 + 定位点
-function drawLogoMark(ctx, cx, cy, r, color) {
-  ctx.save();
-  ctx.strokeStyle = color;
-  ctx.fillStyle = color;
-  ctx.lineWidth = 1.3;
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.lineWidth = 0.8;
-  ctx.beginPath();
-  ctx.ellipse(cx, cy, r * 0.42, r, 0, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(cx - r, cy);
-  ctx.lineTo(cx + r, cy);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.arc(cx + r * 0.62, cy - r * 0.62, r * 0.27, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.restore();
-}
-
 // 底端品牌栏：左侧标志与字标，右侧小程序码（没有码图时用文字提示）
 function drawBrandFooter(ctx, y0, style, qr) {
   const W = POSTER_W;
@@ -1075,7 +1055,7 @@ const PAINTERS = {
   cinema: paintCinema,
   coord: paintCoord
 };
-MORE_TEMPLATES.forEach((t) => {
+ADDED_TEMPLATES.forEach((t) => {
   PAINTERS[t.id] = t.paint;
 });
 

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert';
 import { installFakeCanvas } from './helpers/fake-canvas.js';
 import { TEMPLATES, CATEGORIES, CROP_REGIONS, templatesOf, paintPoster, POSTER_W, POSTER_H, posterHeight } from '../public/js/lib/posters.js';
-import { scaleBar, calendarOf, shortCoord, dateParts, sloganOf, TAGLINE } from '../public/js/lib/poster-kit.js';
+import { scaleBar, calendarOf, shortCoord, dateParts, sloganOf, TAGLINE, inkOn, capLuminance, luminance } from '../public/js/lib/poster-kit.js';
 import { resolveTheme, mixHex, THEMES, CUSTOM_ID } from '../public/js/lib/themes.js';
 import { buildInfo, buildStyle } from '../public/js/params.js';
 import { DEFAULT_SETTINGS } from '../public/js/store.js';
@@ -37,9 +37,9 @@ const portrait = { width: 600, height: 900 };
 const map = new FakeCanvas(1200, 1600);
 
 const ITEMS = {
-  kyoto: { templateId: 'polaroid', crops: {}, place: 'KYOTO', lat: 35.0116, lon: 135.7681, dateValue: '2024-06-16', dateText: 'JUN 16, 2024', clock: '10:22', camera: 'iPhone 15 Pro' },
+  kyoto: { templateId: 'polaroid', crops: {}, place: 'KYOTO', lat: 35.0116, lon: 135.7681, dateValue: '2024-06-16', dateText: 'JUN 16, 2024', clock: '10:22', camera: 'iPhone 15 Pro', exposure: '24mm f/1.8 1/120s ISO80' },
   south: { templateId: 'polaroid', crops: {}, place: 'SYDNEY', lat: -33.8688, lon: -151.2093, dateValue: '2023-12-31', dateText: '', clock: '', camera: '' },
-  long: { templateId: 'polaroid', crops: {}, place: 'ST. WOLFGANG IM SALZKAMMERGUT, UPPER AUSTRIA', lat: 47.7386, lon: 13.4478, dateValue: '2024-02-29', dateText: '', clock: '23:59', camera: 'SONY ILCE-7M4' },
+  long: { templateId: 'polaroid', crops: {}, place: 'ST. WOLFGANG IM SALZKAMMERGUT, UPPER AUSTRIA', lat: 47.7386, lon: 13.4478, dateValue: '2024-02-29', dateText: '', clock: '23:59', camera: 'SONY ILCE-7M4', exposure: '600mm f/6.3 1/4000s ISO12800' },
   cjk: { templateId: 'polaroid', crops: {}, place: '杭州市西湖区灵隐寺北高峰', lat: 30.259, lon: 120.1388, dateValue: '2024-01-01', dateText: '', clock: '', camera: '' },
   nodate: { templateId: 'polaroid', crops: {}, place: 'REYKJAVIK', lat: 64.1466, lon: -21.9426, dateValue: '', dateText: '', clock: '', camera: '' },
   nogps: { templateId: 'polaroid', crops: {}, place: '', lat: null, lon: null, dateValue: '2024-06-16', dateText: 'JUN 16, 2024', clock: '', camera: '' }
@@ -128,6 +128,18 @@ test('poster-kit: shortCoord, dateParts and sloganOf', () => {
   assert.strictEqual(sloganOf({}), TAGLINE);
   assert.strictEqual(sloganOf({ slogan: '' }), '');
   assert.strictEqual(sloganOf({ slogan: 'HI' }), 'HI');
+});
+
+test('poster-kit: text on solid theme colours stays readable', () => {
+  assert.strictEqual(inkOn('#0A84FF'), '#FFFFFF');
+  assert.strictEqual(inkOn('#E8D44D'), '#1C1C1E');
+  assert.strictEqual(inkOn('#34E89A', '#000000'), '#000000');
+  for (const hex of ['#E8D44D', '#34E89A', '#FFFFFF']) {
+    const c = capLuminance(hex, 0.5);
+    assert.ok(luminance(c) <= 0.5, `${hex} -> ${c}`);
+    assert.strictEqual(inkOn(c), '#FFFFFF');
+  }
+  assert.strictEqual(capLuminance('#2E9E4F', 0.5), '#2E9E4F');
 });
 
 test('themes: mixHex blends linearly and clamps', () => {
