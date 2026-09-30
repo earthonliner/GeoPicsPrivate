@@ -1,0 +1,23 @@
+{
+  "name": "geophotograph-local",
+  "version": "1.0.0",
+  "description": "在本机批量处理照片的地理位置与拍摄日期，生成地图海报（移植自 GeoPhotoGraph，无会员 / 付费，纯本地）",
+  "type": "module",
+  "private": true,
+  "bin": {
+    "geophotograph": "bin/geophotograph.js"
+  },
+  "engines": {
+    "node": ">=18.17"
+  },
+  "scripts": {
+    "start": "node bin/geophotograph.js",
+    "dev": "node --watch bin/geophotograph.js --no-open",
+    "test": "node --test",
+    "test:e2e": "node tests/e2e/run.mjs"
+  },
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "puppeteer-core": "^25.12.0"
+  }
+}
