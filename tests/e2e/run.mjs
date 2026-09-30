@@ -77,11 +77,14 @@ try {
     exportDisabled: document.querySelector('#btn-export').disabled
   }));
   check(empty.badge, '空状态用示例照片预览');
-  check(empty.tabs >= 8, `模板分类 ${empty.tabs} 个`);
+  check(empty.tabs >= 9, `模板分类 ${empty.tabs} 个`);
   check(empty.exportDisabled, '没有照片时导出按钮不可用');
+  await page.click('#cat-tabs .tab[data-id="social"]');
+  const social = await page.$$eval('#tpl-strip .tpl', (l) => l.map((n) => n.dataset.id));
+  check(social.includes('watermark') && social.includes('player') && social.includes('station'), `「社交」分类 ${social.length} 个模板`);
   await page.click('#cat-tabs .tab[data-id="all"]');
   const allCount = await page.$$eval('#tpl-strip .tpl', (l) => l.length);
-  check(allCount === 31, `「全部」分类 ${allCount} 个模板`);
+  check(allCount === 40, `「全部」分类 ${allCount} 个模板`);
   await sleep(2500);
   await page.screenshot({ path: out('01-empty.png') });
 
@@ -137,7 +140,7 @@ try {
 
   /* ---------------- 全部模板截图 ---------------- */
   const templates = await app(page, async () => (await import('/js/lib/posters.js')).TEMPLATES.map((t) => t.id));
-  check(templates.length === 31, `模板数量 ${templates.length}`);
+  check(templates.length === 40, `模板数量 ${templates.length}`);
   for (const id of templates) {
     await app(page, (tid) => {
       const a = window.__app;
