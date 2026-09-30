@@ -7,6 +7,7 @@ import { formatPlace, normalizePlaceName } from './lib/place-name.js';
 import { pickRandomTemplates } from './lib/batch.js';
 import { templatesOf } from './lib/posters.js';
 import { createItem, isImageFile } from './store.js';
+import { fileKey, restore } from './edits.js';
 import * as api from './api.js';
 
 /* ---------------------------- 收集文件 ---------------------------- */
@@ -60,8 +61,6 @@ export async function mapLimit(list, limit, fn) {
 
 /* ---------------------------- 导入 ---------------------------- */
 
-const fileKey = (f) => `${f.name}|${f.size}|${f.lastModified}`;
-
 function parseExifTime(raw) {
   const m = /(\d{4}):(\d{2}):(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/.exec(raw || '');
   return m ? new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]).getTime() : 0;
@@ -102,25 +101,28 @@ export async function importFiles(app, files, onProgress) {
       fresh.push(f);
     }
   }
-  if (!fresh.length) return { created: [], skipped: files.length };
+  if (!fresh.length) return { created: [], skipped: files.length, restored: 0 };
 
+  const s = app.settings;
   const created = new Array(fresh.length);
   let done = 0;
+  let restored = 0;
   await mapLimit(fresh, 8, async (file, i) => {
-    const item = createItem(file, app.settings.templateId);
+    const item = createItem(file, s.templateId);
     applyExif(item, await extractFromBlob(file));
+    if (s.rememberEdits && restore(item, { keepTemplate: s.batchMode === 'random' })) restored += 1;
     created[i] = item;
     done += 1;
     if (done % 25 === 0 || done === fresh.length) onProgress(done, fresh.length);
   });
 
-  const s = app.settings;
   if (s.batchMode === 'random') {
-    pickRandomTemplates(templatesOf(s.catId).map((t) => t.id), created.length).forEach((id, i) => {
-      created[i].templateId = id;
+    const free = created.filter((it) => !it.tplManual);
+    pickRandomTemplates(templatesOf(s.catId).map((t) => t.id), free.length).forEach((id, i) => {
+      free[i].templateId = id;
     });
   }
-  return { created, skipped: files.length - fresh.length };
+  return { created, skipped: files.length - fresh.length, restored };
 }
 
 /* ---------------------------- 地名解析 ---------------------------- */
@@ -134,6 +136,7 @@ export class PlaceResolver {
     this.done = 0;
     this.waiters = [];
     this.cache = new Map();
+    this.inflight = new Map();
   }
 
   get busy() {
@@ -182,7 +185,12 @@ export class PlaceResolver {
     const key = `${lang}|${level}|${item.lat.toFixed(digits)},${item.lon.toFixed(digits)}`;
     let geo = this.cache.get(key);
     if (geo === undefined) {
-      geo = await api.reverseGeocode(item.lat, item.lon, lang, level);
+      let job = this.inflight.get(key);
+      if (!job) {
+        job = api.reverseGeocode(item.lat, item.lon, lang, level).finally(() => this.inflight.delete(key));
+        this.inflight.set(key, job);
+      }
+      geo = await job;
       if (geo) this.cache.set(key, geo);
     }
     if (locId !== item.locId) return;
@@ -195,6 +203,7 @@ export class PlaceResolver {
 
   clearCache() {
     this.cache.clear();
+    this.inflight.clear();
   }
 }
 
@@ -202,6 +211,7 @@ export function setLocation(app, item, lat, lon, fallbackName) {
   item.lat = lat;
   item.lon = lon;
   item.hasGps = true;
+  item.locManual = true;
   item.fallbackName = fallbackName || '';
   item.coordText = formatCoordinates(lat, lon).text;
   item.place = 'LOCATING…';
