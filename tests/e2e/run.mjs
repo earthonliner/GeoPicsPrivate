@@ -228,7 +228,8 @@ try {
     a.settings.inspectorTab = 'style';
     document.querySelector('#insp-tabs [data-tab="style"]').click();
   });
-  await sleep(1500);
+  await page.waitForFunction(() => document.querySelector('#toast').hidden, { timeout: 10000 });
+  await sleep(300);
   await page.screenshot({ path: out('05-dark.png') });
   await page.click('#btn-theme');
   await page.click('#insp-tabs [data-tab="photo"]');
