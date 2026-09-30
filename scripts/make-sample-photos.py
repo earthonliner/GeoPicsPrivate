@@ -190,6 +190,7 @@ def scene(kind, size, rng):
         gradient(d, w, 0, horizon, top, bottom)
         sun(img, w * 0.78, h * 0.18, min(w, h) * 0.045, (255, 250, 230), glow=2.2)
         d = ImageDraw.Draw(img, "RGBA")
+        d.rectangle((0, horizon, w, h), fill=(226, 180, 120))
         px = w * rng.uniform(0.2, 0.45)
         for k, (ow, oh) in enumerate([(0.34, 0.26), (0.22, 0.17)]):
             bx = px + k * w * 0.3
