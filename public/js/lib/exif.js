@@ -2,11 +2,12 @@
  * exif-parser.js
  *
  * 纯 JS、基于 ArrayBuffer/DataView 的 EXIF 解析器（不依赖 DOM / Image，主线程、Worker、Node 均可运行）。
- * 最小子集：GPSLatitude / GPSLongitude / DateTimeOriginal / Orientation / Make / Model。
+ * 最小子集：GPSLatitude / GPSLongitude / DateTimeOriginal / Orientation / Make / Model，
+ * 以及相机水印用到的曝光参数（ExposureTime / FNumber / ISO / FocalLength）。
  *
  * 支持：JPEG (APP1 Exif)；HEIC/HEIF 等容器通过扫描 "Exif\0\0" 头做兜底。
  */
-import { clockOf, formatCamera } from './formats.js';
+import { clockOf, formatCamera, formatExposure } from './formats.js';
 
 // EXIF 位于文件头部，只读开头一小段，避免把几十 MB 的原图整个读入内存。
 // JPEG 的 APP1 总在文件最前面，256KB 足够；HEIC 等容器的 Exif 可能靠后，失败时再放大到 2MB。
@@ -28,6 +29,11 @@ const TAG = {
   GPS_IFD: 0x8825,
   DATETIME_ORIGINAL: 0x9003,
   DATETIME_DIGITIZED: 0x9004,
+  EXPOSURE_TIME: 0x829a,
+  F_NUMBER: 0x829d,
+  ISO: 0x8827,
+  FOCAL_LENGTH: 0x920a,
+  FOCAL_LENGTH_35MM: 0xa405,
   GPS_LAT_REF: 0x0001,
   GPS_LAT: 0x0002,
   GPS_LON_REF: 0x0003,
@@ -233,10 +239,18 @@ export function toDateValue(input) {
 /* 对外接口                                                             */
 /* ------------------------------------------------------------------ */
 
+// 曝光参数只接受有限正数；ISO 可能是多值数组，取第一个
+function positive(v) {
+  const n = Array.isArray(v) ? v[0] : v;
+  return typeof n === 'number' && Number.isFinite(n) && n > 0 ? n : null;
+}
+
 /**
  * 解析 ArrayBuffer 中的 EXIF。
  * @returns {{latitude:number|null, longitude:number|null, dateTimeOriginal:string|null,
- *            orientation:number|null, make:string|null, model:string|null}|null}
+ *            orientation:number|null, make:string|null, model:string|null,
+ *            exposureTime:number|null, fNumber:number|null, iso:number|null,
+ *            focalLength:number|null, focalLength35:number|null}|null}
  */
 export function parseExif(buffer) {
   if (!buffer || !buffer.byteLength) return null;
@@ -280,7 +294,12 @@ export function parseExif(buffer) {
       dateTimeOriginal: exif[TAG.DATETIME_ORIGINAL] || exif[TAG.DATETIME_DIGITIZED] || ifd0[TAG.DATETIME] || null,
       orientation: typeof ifd0[TAG.ORIENTATION] === 'number' ? ifd0[TAG.ORIENTATION] : null,
       make: ifd0[TAG.MAKE] || null,
-      model: ifd0[TAG.MODEL] || null
+      model: ifd0[TAG.MODEL] || null,
+      exposureTime: positive(exif[TAG.EXPOSURE_TIME]),
+      fNumber: positive(exif[TAG.F_NUMBER]),
+      iso: positive(exif[TAG.ISO]),
+      focalLength: positive(exif[TAG.FOCAL_LENGTH]),
+      focalLength35: positive(exif[TAG.FOCAL_LENGTH_35MM])
     };
   } catch (e) {
     return null;
@@ -314,6 +333,7 @@ export async function extractFromBlob(blob) {
     dateRaw: exif && exif.dateTimeOriginal ? exif.dateTimeOriginal : '',
     clock: exif ? clockOf(exif.dateTimeOriginal) : '',
     camera: exif ? formatCamera(exif.make, exif.model) : '',
+    exposure: exif ? formatExposure(exif) : '',
     orientation: exif ? exif.orientation : null,
     raw: exif
   };

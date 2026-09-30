@@ -99,6 +99,10 @@ try {
   const rotated = await app(page, () => window.__app.items.filter((i) => /-013\./.test(i.name)).map((i) => i.aspect));
   check(rotated.length === 1 && rotated[0] < 1, `EXIF 方向已应用（缩略图宽高比 ${rotated[0] && rotated[0].toFixed(2)}）`);
 
+  const exposures = await app(page, () => window.__app.items.map((i) => i.exposure));
+  const withExposure = exposures.filter((e) => /^\d+mm f\/[\d.]+ 1\/\d+s ISO\d+$/.test(e)).length;
+  check(withExposure > 0 && withExposure === exposures.filter(Boolean).length && withExposure < COUNT, `曝光参数读取 ${withExposure} 张（如 ${exposures.find(Boolean)}）`);
+
   const noLoc = await app(page, () => window.__app.items.filter((i) => i.lat === null).length);
   check(noLoc > 0 && noLoc < COUNT, `无位置照片 ${noLoc} 张被识别`);
   await page.click('#lib-filters [data-filter="noloc"]');

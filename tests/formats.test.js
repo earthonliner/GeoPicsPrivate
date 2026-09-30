@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert';
-import { parseDateValue, formatDateParts, formatCoordText, formatCamera, clockOf, DATE_FORMATS, COORD_FORMATS } from '../public/js/lib/formats.js';
+import { parseDateValue, formatDateParts, formatCoordText, formatCamera, formatShutter, formatExposure, clockOf, DATE_FORMATS, COORD_FORMATS } from '../public/js/lib/formats.js';
 import { formatCoordinates, formatDate } from '../public/js/lib/exif.js';
 import { buildInfo, buildStyle, NO_COORD_TEXT } from '../public/js/params.js';
 import { DEFAULT_SETTINGS } from '../public/js/store.js';
@@ -57,6 +57,31 @@ test('formats: camera names drop maker suffixes and duplicated brands', () => {
   assert.strictEqual(formatCamera('', ''), '');
 });
 
+test('formats: shutter speeds read like a camera display', () => {
+  assert.strictEqual(formatShutter(1 / 250), '1/250s');
+  assert.strictEqual(formatShutter(0.00826), '1/121s');
+  assert.strictEqual(formatShutter(0.2), '1/5s');
+  assert.strictEqual(formatShutter(1 / 3), '1/3s');
+  assert.strictEqual(formatShutter(0.5), '1/2s');
+  assert.strictEqual(formatShutter(0.4), '0.4s');
+  assert.strictEqual(formatShutter(0.8), '0.8s');
+  assert.strictEqual(formatShutter(1), '1s');
+  assert.strictEqual(formatShutter(1.3), '1.3s');
+  assert.strictEqual(formatShutter(30), '30s');
+  assert.strictEqual(formatShutter(0), '');
+  assert.strictEqual(formatShutter(null), '');
+  assert.strictEqual(formatShutter(Infinity), '');
+});
+
+test('formats: exposure summary prefers the 35mm focal length and skips missing parts', () => {
+  assert.strictEqual(formatExposure({ focalLength: 6.76, focalLength35: 24, fNumber: 1.78, exposureTime: 1 / 120, iso: 80 }), '24mm f/1.8 1/120s ISO80');
+  assert.strictEqual(formatExposure({ focalLength: 35, fNumber: 2, exposureTime: 1 / 60, iso: 400 }), '35mm f/2 1/60s ISO400');
+  assert.strictEqual(formatExposure({ fNumber: 11, iso: 100 }), 'f/11 ISO100');
+  assert.strictEqual(formatExposure({ exposureTime: 2 }), '2s');
+  assert.strictEqual(formatExposure({}), '');
+  assert.strictEqual(formatExposure(null), '');
+});
+
 test('formats: clockOf reads HH:MM from EXIF and ISO timestamps', () => {
   assert.strictEqual(clockOf('2024:06:16 10:22:33'), '10:22');
   assert.strictEqual(clockOf('2024-06-16T08:05:00'), '08:05');
@@ -76,6 +101,8 @@ test('params: buildInfo applies the date / coordinate formats', () => {
   assert.deepStrictEqual(info.date, { y: 2024, m: 6, d: 16 });
   assert.strictEqual(info.time, '10:22');
   assert.strictEqual(info.camera, 'iPhone 15 Pro');
+  assert.strictEqual(info.exposure, '');
+  assert.strictEqual(buildInfo(sampleItem({ exposure: '24mm f/1.8' }), settings).exposure, '24mm f/1.8');
   assert.strictEqual(info.zoom, settings.zoom);
 
   const cn = buildInfo(sampleItem(), { ...settings, dateFormat: 'cn', coordFormat: 'dms' });

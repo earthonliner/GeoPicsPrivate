@@ -68,6 +68,7 @@ export function createInspector(app, actions) {
     const meta = [];
     if (it && it.camera) meta.push(['camera', it.camera]);
     if (it && it.clock) meta.push(['clock', it.clock]);
+    if (it && it.exposure) meta.push(['aperture', it.exposure]);
     if (it && it.locManual) meta.push(['target', '手动定位']);
     $('exif-meta').innerHTML = '';
     meta.forEach(([name, text]) => {

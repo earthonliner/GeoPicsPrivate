@@ -135,6 +135,7 @@ export async function createSampleItem(settings) {
     autoDate: { text: 'NOV 23, 2024', value: '2024-11-23', fromExif: true },
     clock: '16:48',
     camera: 'iPhone 15 Pro',
+    exposure: '24mm f/1.8 1/120s ISO80',
     aspect: W / H
   });
   return item;

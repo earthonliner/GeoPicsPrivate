@@ -80,6 +80,27 @@ export function formatCamera(make, model) {
   return `${mk} ${md}`;
 }
 
+// 快门速度（秒）-> "1/250s" / "1/3s" / "0.4s" / "2s"
+export function formatShutter(t) {
+  if (!(t > 0) || !Number.isFinite(t)) return '';
+  if (t >= 1) return `${Number(t.toFixed(1))}s`;
+  const inv = 1 / t;
+  if (t < 0.25 || Math.abs(inv - Math.round(inv)) < 0.02) return `1/${Math.round(inv)}s`;
+  return `${Number(t.toFixed(1))}s`;
+}
+
+// EXIF 曝光参数 -> "24mm f/1.8 1/120s ISO64"，缺失的项省略；焦距优先用等效 35mm 焦距
+export function formatExposure(e) {
+  if (!e) return '';
+  const focal = e.focalLength35 || e.focalLength;
+  return [
+    focal > 0 ? `${Math.round(focal)}mm` : '',
+    e.fNumber > 0 ? `f/${Number(e.fNumber.toFixed(1))}` : '',
+    formatShutter(e.exposureTime),
+    e.iso > 0 ? `ISO${Math.round(e.iso)}` : ''
+  ].filter(Boolean).join(' ');
+}
+
 // EXIF 时间 "2024:06:16 10:22:33" -> "10:22"
 export function clockOf(raw) {
   const m = /\d{4}[:\-/]\d{2}[:\-/]\d{2}[ T](\d{2}):(\d{2})/.exec(String(raw || ''));

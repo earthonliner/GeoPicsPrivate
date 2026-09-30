@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""生成带 GPS / 拍摄日期 EXIF 的示例照片，用于体验或压测（需要 Pillow：pip install pillow）。
+"""生成带 GPS / 拍摄日期 / 相机与曝光参数 EXIF 的示例照片，用于体验或压测（需要 Pillow：pip install pillow）。
 
 每个地点对应一种程序化绘制的风景（湖光山色、城市天际线、极光、沙漠等），
 方便直观检查模板排版。
@@ -12,6 +12,7 @@ import random
 import sys
 
 from PIL import Image, ImageChops, ImageDraw, ImageFilter
+from PIL.TiffImagePlugin import IFDRational
 
 PLACES = [
     ("hangzhou", 30.2590, 120.1388, "lake"),
@@ -25,6 +26,10 @@ PLACES = [
 ]
 SIZES = [(1600, 1067), (1067, 1600), (1500, 1500), (1800, 1012)]
 CAMERAS = [("Apple", "iPhone 15 Pro"), ("Apple", "iPhone 13 mini"), ("SONY", "ILCE-7M4"), ("FUJIFILM", "X100V")]
+# 与 CAMERAS 对应：焦距 (分子, 分母)、等效 35mm 焦距、光圈 (分子, 分母)
+LENSES = [((676, 100), 24, (178, 100)), ((510, 100), 26, (16, 10)), ((35, 1), 35, (28, 10)), ((23, 1), 35, (2, 1))]
+SHUTTERS = [60, 120, 250, 500, 1000]
+ISOS = [50, 100, 200, 400]
 
 PALETTES = {
     "lake": [(142, 184, 214), (236, 210, 170)],
@@ -228,6 +233,13 @@ def main():
             exif[0x0112] = 6
         ifd = exif.get_ifd(0x8769)
         ifd[0x9003] = f"2024:{month:02d}:{day:02d} {8 + i % 10:02d}:{(i * 7) % 60:02d}:00"
+        if i % 7 != 6:  # 每 7 张中有 1 张没有曝光参数（如扫描件 / 截图）
+            focal, focal35, fnum = LENSES[i % len(LENSES)]
+            ifd[0x829A] = IFDRational(1, SHUTTERS[i % len(SHUTTERS)])
+            ifd[0x829D] = IFDRational(*fnum)
+            ifd[0x8827] = ISOS[i % len(ISOS)]
+            ifd[0x920A] = IFDRational(*focal)
+            ifd[0xA405] = focal35
         if i % 11 != 10:  # 每 11 张中有 1 张没有 GPS
             gps = exif.get_ifd(0x8825)
             gps[1] = "N" if lat >= 0 else "S"

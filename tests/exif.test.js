@@ -1,7 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert';
 import { parseExif, formatCoordinates, formatDate, toDateValue, extractFromBlob } from '../public/js/lib/exif.js';
+import { formatExposure } from '../public/js/lib/formats.js';
 import { buildJpeg } from './helpers/exif-fixture.js';
+
+const IPHONE = {
+  make: 'Apple',
+  model: 'iPhone 15 Pro',
+  exposure: { time: [1, 250], fNumber: [178, 100], iso: 64, focal: [676, 100], focal35: 24 }
+};
 
 test('parseExif reads GPS, date and orientation', () => {
   const r = parseExif(buildJpeg({ lat: 46.0192, lon: 7.7459 }));
@@ -9,6 +16,27 @@ test('parseExif reads GPS, date and orientation', () => {
   assert.ok(Math.abs(r.longitude - 7.7459) < 1e-4);
   assert.strictEqual(r.dateTimeOriginal, '2024:06:16 10:22:33');
   assert.strictEqual(r.orientation, 6);
+});
+
+test('parseExif reads camera and exposure settings', () => {
+  const r = parseExif(buildJpeg({ lat: 35.0116, lon: 135.7681, ...IPHONE }));
+  assert.strictEqual(r.make, 'Apple');
+  assert.strictEqual(r.model, 'iPhone 15 Pro');
+  assert.strictEqual(r.exposureTime, 0.004);
+  assert.strictEqual(r.fNumber, 1.78);
+  assert.strictEqual(r.iso, 64);
+  assert.strictEqual(r.focalLength, 6.76);
+  assert.strictEqual(r.focalLength35, 24);
+  assert.strictEqual(r.orientation, 6);
+  assert.ok(Math.abs(r.latitude - 35.0116) < 1e-4);
+  assert.strictEqual(formatExposure(r), '24mm f/1.8 1/250s ISO64');
+
+  const bare = parseExif(buildJpeg({ lat: 1, lon: 1 }));
+  assert.strictEqual(bare.exposureTime, null);
+  assert.strictEqual(bare.iso, null);
+  assert.strictEqual(formatExposure(bare), '');
+  const zero = parseExif(buildJpeg({ lat: 1, lon: 1, exposure: { time: [0, 0], fNumber: [0, 1], iso: 0 } }));
+  assert.strictEqual(formatExposure(zero), '');
 });
 
 test('parseExif applies S / W references', () => {
@@ -60,7 +88,13 @@ test('extractFromBlob reads a Blob and never rejects', async () => {
   assert.strictEqual(ok.coordText, '46.0192° N  7.7459° E');
   assert.strictEqual(ok.dateText, 'JUN 16, 2024');
   assert.strictEqual(ok.dateValue, '2024-06-16');
+  assert.strictEqual(ok.exposure, '');
+  const phone = await extractFromBlob(new Blob([buildJpeg({ lat: 46.0192, lon: 7.7459, ...IPHONE })]));
+  assert.strictEqual(phone.camera, 'iPhone 15 Pro');
+  assert.strictEqual(phone.exposure, '24mm f/1.8 1/250s ISO64');
+  assert.strictEqual(phone.clock, '10:22');
   const none = await extractFromBlob(new Blob([new Uint8Array([1, 2, 3])]));
   assert.strictEqual(none.hasGps, false);
   assert.strictEqual(none.dateText, '');
+  assert.strictEqual(none.exposure, '');
 });

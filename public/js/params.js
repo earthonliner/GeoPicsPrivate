@@ -35,6 +35,7 @@ export function buildInfo(item, settings = {}) {
     date,
     time: item.clock || '',
     camera: item.camera || '',
+    exposure: item.exposure || '',
     lat: hasLoc ? item.lat : null,
     lon: hasLoc ? item.lon : null,
     zoom: settings.zoom || 12,

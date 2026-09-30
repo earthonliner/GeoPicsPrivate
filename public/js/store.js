@@ -81,6 +81,7 @@ export function createItem(file, templateId) {
     time: file.lastModified || 0,
     clock: '',
     camera: '',
+    exposure: '',
     needsConvert: false,
     locManual: false,
     tplManual: false,
